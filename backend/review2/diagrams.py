@@ -76,8 +76,8 @@ for i, (title, color, sub) in enumerate(stages):
     x += w + gap
 
 # feedback arrow (runtime -> sequences: observed demand stream feeds tables)
-arrow(ax, centers[5], 12.0, centers[2] + 2, 12.0)
-ax.text((centers[5] + centers[2]) / 2, 12.3, "demand page stream feeds Markov/tables (online)",
+arrow(ax, centers[5], 9.6, centers[2] + 2, 9.6)
+ax.text((centers[5] + centers[2]) / 2, 9.9, "demand page stream feeds Markov/tables (online)",
         ha="center", fontsize=6.6, color=EDGE)
 
 # row of experiment controls
