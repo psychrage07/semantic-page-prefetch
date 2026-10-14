@@ -174,13 +174,18 @@ def _add_field(paragraph, instr, size=None, placeholder="1"):
 _TOKEN = re.compile(r"(\*\*.+?\*\*|`.+?`|\[\[.+?\]\]|(?<!\*)\*(?!\*).+?(?<!\*)\*(?!\*))")
 
 
+def _curly(text):
+    """Typographic apostrophe inside words (SQLite's, project's); code spans are not routed here."""
+    return re.sub(r"(?<=\w)'(?=\w)", "\u2019", text)
+
+
 def add_runs(paragraph, text, size=None, color=None):
     """Mini markup: **bold**, *italic*, `code`, [[placeholder]] (yellow highlight)."""
     for token in _TOKEN.split(text):
         if not token:
             continue
         if token.startswith("**") and token.endswith("**"):
-            run = paragraph.add_run(token[2:-2])
+            run = paragraph.add_run(_curly(token[2:-2]))
             run.bold = True
         elif token.startswith("`") and token.endswith("`"):
             run = paragraph.add_run(token[1:-1])
@@ -192,10 +197,10 @@ def add_runs(paragraph, text, size=None, color=None):
             run.font.highlight_color = WD_COLOR_INDEX.YELLOW
             run.bold = True
         elif token.startswith("*") and token.endswith("*"):
-            run = paragraph.add_run(token[1:-1])
+            run = paragraph.add_run(_curly(token[1:-1]))
             run.italic = True
         else:
-            run = paragraph.add_run(token)
+            run = paragraph.add_run(_curly(token))
         if size and not (token.startswith("`") and token.endswith("`")):
             run.font.size = Pt(size)
         if color is not None:
@@ -974,7 +979,7 @@ bullets([
     f"On real storage every prefetching strategy is slower than `none` (all intervals positive, +{fmt(prs['markov2']['mean_delta_ms'], 2)} to "
     f"+{fmt(prs['model_b']['mean_delta_ms'], 2)} ms), and the custom-cache `none` is itself slower than stock SQLite "
     f"({fmt(prs['stock']['mean_delta_ms'], 2, True)} ms): with a 3.2 MB database resident in RAM there is no I/O latency to hide, so any scheduling work is pure overhead.",
-    "The hybrid gate cuts Model B's inference time by roughly half in every category; in the earlier three-seed "
+    "The hybrid gate cuts Model B's inference time by half or more in every category; in the earlier three-seed "
     "development validation (200 queries per seed) it reduced Model B inference from 979.9 ms to 403.1 ms per run and "
     "achieved a −3.19 ms paired delta versus `none` (Markov-2: −3.42 ms). That suite was a tuning artefact and is not pooled with the final results.",
 ])
