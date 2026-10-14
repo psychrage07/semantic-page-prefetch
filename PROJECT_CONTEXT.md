@@ -62,7 +62,7 @@ sqlite-semantic-page-prefetching-updated-v2/
 │   ├── pagewise/                    # Core Python package
 │   │   ├── cli.py                   # Unified CLI entry point
 │   │   ├── database.py              # Synthetic e-commerce database generator
-│   │   ├── workloads.py             # 7 SQL workload templates (point, range, join, agg, etc.)
+│   │   ├── workloads.py             # 6 SQL workload templates (point lookup, joins, range, recursive, profile)
 │   │   ├── metadata.py              # SQLite B-tree & page map extractor (APSW/dbstat)
 │   │   ├── tracing.py               # APSW VFS interception layer (TraceVFS, TraceRecorder)
 │   │   ├── dataset.py               # Feature vectorization and sequence building
@@ -74,7 +74,7 @@ sqlite-semantic-page-prefetching-updated-v2/
 │   │   ├── sweep.py                 # Multi-seed training sweeps & semantic ablations
 │   │   ├── reporting.py             # Consolidated Markdown reports & dashboard export
 │   │   └── dashboard.py             # Optional Streamlit viewer for measured artifacts
-│   ├── tests/                       # Automated test suite (32 passed tests)
+│   ├── tests/                       # Automated test suite (61 tests in 12 files)
 │   │   ├── test_benchmark_audit_and_repair.py # Audit diagnostics & storage device tests
 │   │   ├── test_database_and_workloads.py     # Schema and query execution tests
 │   │   ├── test_dataset_and_model.py          # Feature extraction & MLP training tests
