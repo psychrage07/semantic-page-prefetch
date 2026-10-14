@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pagewise-sqlite-prefetch"
+version = "0.2.0"
+description = "Research prototype for tracing and evaluating semantics-aware SQLite page prefetching"
+requires-python = ">=3.10"
+dependencies = ["apsw>=3.45.0", "numpy>=1.26", "pandas>=2.1", "torch>=2.2"]
+
+[project.optional-dependencies]
+test = ["pytest>=8.0"]
+
+[project.scripts]
+pagewise = "pagewise.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["pagewise*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

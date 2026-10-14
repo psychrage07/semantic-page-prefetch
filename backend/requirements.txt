@@ -1,0 +1,11 @@
+# Install in the Python environment used for the SQLite experiment.
+apsw>=3.45.0
+numpy>=1.26
+pandas>=2.1
+torch>=2.2
+pytest>=8.0
+# Optional ONNX export/runtime, installed only after the PyTorch pipeline works:
+# onnx>=1.15
+# onnxruntime>=1.17
+# Optional dashboard integration:
+# streamlit>=1.32

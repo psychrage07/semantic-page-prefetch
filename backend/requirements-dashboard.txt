@@ -1,0 +1,2 @@
+# Optional measured-results dashboard (install in addition to backend/requirements.txt)
+streamlit>=1.32

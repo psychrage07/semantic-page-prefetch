@@ -1,0 +1,26 @@
+# Tool metadata
+.freebuff/
+
+# JavaScript frontend
+node_modules/
+dist/
+
+# Python environments and bytecode
+.venv/
+backend/.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Generated research data (reproduce with scripts)
+data/*.sqlite
+data/*.sqlite-*
+data/*.metadata.json
+runs/
+models/
+results/
+logs/
+*.pml
+*.PML

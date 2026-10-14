@@ -1,0 +1,24 @@
+{
+  "schema_version": 1,
+  "name": "pagewise-final-evaluation-v1",
+  "database": "runs/experiment-latest/pagewise-medium.sqlite",
+  "model_dir": "runs/experiment-latest/models",
+  "queries_per_run": 100,
+  "seeds": [901, 902, 903],
+  "strategies": ["stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"],
+  "cache_kib": 4096,
+  "cache_pages": 32,
+  "degree": 2,
+  "queue_size": 32,
+  "predict_on": "miss",
+  "predict_every": 1,
+  "max_score_candidates": 12,
+  "categories": [
+    {"id": "latency-0p2ms", "miss_delay_ms": 0.2, "mode": "latency-injected"},
+    {"id": "latency-1p0ms", "miss_delay_ms": 1.0, "mode": "latency-injected"},
+    {"id": "real-storage", "miss_delay_ms": 0.0, "mode": "real-storage-no-injected-delay"}
+  ],
+  "primary_endpoint": "paired mean query latency difference versus none",
+  "ci": {"method": "paired query bootstrap", "resamples": 2000},
+  "hybrid_gate": "training-only exact Markov-2 transition, otherwise Model B"
+}
