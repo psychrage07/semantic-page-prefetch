@@ -15,7 +15,8 @@ def read_page_size(database_path: str | Path) -> int:
     return 65536 if value == 1 else value
 
 
-def _read_dbstat_rows(database_path: str | Path) -> list[tuple[Any, ...]]:
+def _read_dbstat_rows(database_path: str | Path,
+                      page_numbers: set[int] | None = None) -> list[tuple[Any, ...]]:
     """Read dbstat rows, preferring stdlib SQLite and falling back to APSW.
 
     Some Windows Python distributions compile their bundled SQLite without
@@ -23,12 +24,22 @@ def _read_dbstat_rows(database_path: str | Path) -> list[tuple[Any, ...]]:
     the feature enabled. Use APSW as a real metadata source in that case.
     """
     path = Path(database_path).resolve()
+    def read_rows(connection: Any) -> list[tuple[Any, ...]]:
+        if not page_numbers:
+            return list(connection.execute("SELECT name, path, pageno, pagetype FROM dbstat"))
+        connection.execute("CREATE TEMP TABLE wanted_pages (pageno INTEGER PRIMARY KEY)")
+        connection.executemany("INSERT INTO wanted_pages VALUES (?)",
+                               ((int(page),) for page in sorted(page_numbers)))
+        return list(connection.execute(
+            "SELECT d.name, d.path, d.pageno, d.pagetype "
+            "FROM dbstat AS d JOIN wanted_pages AS w ON w.pageno = d.pageno"
+        ))
     stdlib_error: Exception | None = None
     con = None
     try:
         uri = f"file:{path.as_posix()}?mode=ro"
         con = sqlite3.connect(uri, uri=True)
-        return con.execute("SELECT name, path, pageno, pagetype FROM dbstat").fetchall()
+        return read_rows(con)
     except Exception as exc:
         stdlib_error = exc
     finally:
@@ -39,7 +50,7 @@ def _read_dbstat_rows(database_path: str | Path) -> list[tuple[Any, ...]]:
         import apsw
         con_apsw = apsw.Connection(str(path), flags=apsw.SQLITE_OPEN_READONLY)
         try:
-            return list(con_apsw.execute("SELECT name, path, pageno, pagetype FROM dbstat"))
+            return read_rows(con_apsw)
         finally:
             con_apsw.close()
     except Exception as apsw_error:
@@ -101,13 +112,14 @@ def dbstat_available(database_path: str | Path | None = None) -> dict[str, bool]
     return support
 
 
-def build_page_map(database_path: str | Path) -> dict[int, dict[str, Any]]:
+def build_page_map(database_path: str | Path,
+                   page_numbers: set[int] | None = None) -> dict[int, dict[str, Any]]:
     """Return page-to-object metadata using dbstat where available.
 
     Page 1 may participate in sqlite_schema B-tree and also contains the file
     header. Pages not returned by dbstat are intentionally left unmapped.
     """
-    rows = _read_dbstat_rows(database_path)
+    rows = _read_dbstat_rows(database_path, page_numbers)
     result: dict[int, dict[str, Any]] = {}
     for name, path, pageno, pagetype in rows:
         path = path or "/"

@@ -1,5 +1,6 @@
 # Install in the Python environment used for the SQLite experiment.
 apsw>=3.45.0
+matplotlib>=3.8
 numpy>=1.26
 pandas>=2.1
 torch>=2.2

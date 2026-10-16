@@ -65,6 +65,8 @@ def main(argv: list[str] | None = None) -> int:
     gen.add_argument("--avg-items", type=int, default=3)
     gen.add_argument("--graph-nodes", type=int, default=5_000)
     gen.add_argument("--edges-per-node", type=int, default=3)
+    gen.add_argument("--item-payload-bytes", type=int, default=0,
+                     help="Deterministic BLOB bytes stored in each order-item row for the large-database branch")
     gen.add_argument("--seed", type=int, default=17)
     gen.add_argument("--overwrite", action="store_true")
 
@@ -75,6 +77,8 @@ def main(argv: list[str] | None = None) -> int:
     trace.add_argument("--seed", type=int, default=1234)
     trace.add_argument("--cache-kib", type=int, default=4096)
     trace.add_argument("--sequential", action="store_true", help="Cycle templates rather than mixed sampling")
+    trace.add_argument("--sparse-page-map", action="store_true",
+                       help="Store dbstat metadata only for pages observed in this training trace")
 
 
     sweep = sub.add_parser("train-sweep", help="Train/evaluate both MLPs across multiple model seeds with a fixed split")
@@ -240,10 +244,13 @@ def main(argv: list[str] | None = None) -> int:
         elif args.command == "generate-db":
             _print_json(generate_database(args.db, customers=args.customers, products=args.products, orders=args.orders,
                                           avg_items_per_order=args.avg_items, graph_nodes=args.graph_nodes,
-                                          edges_per_node=args.edges_per_node, seed=args.seed, overwrite=args.overwrite))
+                                          edges_per_node=args.edges_per_node,
+                                          item_payload_bytes=args.item_payload_bytes,
+                                          seed=args.seed, overwrite=args.overwrite))
         elif args.command == "trace":
             _print_json(trace_workload(args.db, args.out, query_count=args.queries, seed=args.seed,
-                                       cache_kib=args.cache_kib, mixed=not args.sequential))
+                                       cache_kib=args.cache_kib, mixed=not args.sequential,
+                                       sparse_page_map=args.sparse_page_map))
         elif args.command == "train-sweep":
             seeds = _parse_int_list(args.seeds)
             _print_json(train_evaluate_sweep(args.sequences, args.page_map, args.out, seeds=seeds,

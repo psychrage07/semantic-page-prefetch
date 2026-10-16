@@ -24,7 +24,8 @@ def _percentile(values: list[float], percentile: float) -> float | None:
 
 def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_count: int = 500,
                    seed: int = 1234, cache_kib: int = 4096, mixed: bool = True,
-                   prefetch_config: dict[str, Any] | None = None, miss_delay_ms: float = 0.0) -> dict[str, Any]:
+                   prefetch_config: dict[str, Any] | None = None, miss_delay_ms: float = 0.0,
+                   sparse_page_map: bool = False) -> dict[str, Any]:
     """Trace actual SQLite VFS read requests for a reproducible read-only workload."""
     if apsw is None:
         raise RuntimeError("APSW is not installed. Run: python -m pip install -r backend/requirements.txt")
@@ -34,8 +35,16 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
     out = Path(output_dir).resolve()
     out.mkdir(parents=True, exist_ok=True)
     page_size = read_page_size(db_path)
-    page_map = build_page_map(db_path)
-    (out / "page_map.json").write_text(json.dumps({str(k): v for k, v in page_map.items()}, indent=2), encoding="utf-8")
+    if sparse_page_map and prefetch_config is not None:
+        raise ValueError("sparse_page_map is only supported when collecting a training trace")
+    trained_page_map = (Path(prefetch_config["candidate_index_path"]).parent / "page_map.json"
+                        if prefetch_config is not None else None)
+    if trained_page_map is not None and trained_page_map.exists():
+        page_map = json.loads(trained_page_map.read_text(encoding="utf-8"))
+    else:
+        page_map = {} if sparse_page_map else build_page_map(db_path)
+    if not sparse_page_map:
+        (out / "page_map.json").write_text(json.dumps({str(k): v for k, v in page_map.items()}, indent=2), encoding="utf-8")
     cases = generate_workload(db_path, query_count, seed, mixed=mixed)
 
     # EXPLAIN is prepared with a separate standard connection before registering
@@ -161,6 +170,19 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
                         handle.write(json.dumps(ev, ensure_ascii=False) + "\n")
         recorder.close()
 
+    if sparse_page_map:
+        observed_pages: set[int] = set()
+        for line in (out / "trace.jsonl").read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            row = json.loads(line)
+            first_page, last_page = row.get("first_page"), row.get("last_page")
+            if isinstance(first_page, int) and isinstance(last_page, int):
+                observed_pages.update(range(first_page, last_page + 1))
+        page_map = build_page_map(db_path, observed_pages)
+        (out / "page_map.json").write_text(
+            json.dumps({str(k): v for k, v in page_map.items()}, indent=2), encoding="utf-8")
+
     result_csv = out / "query_results.csv"
     columns = ["query_id", "template_id", "workload_family", "elapsed_ms", "result_rows", "plan_class", "seed"]
     with result_csv.open("w", newline="", encoding="utf-8") as handle:
@@ -176,6 +198,7 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
         "stdlib_sqlite_version": sqlite3.sqlite_version,
         "apsw_sqlite_version": apsw.sqlitelibversion() if apsw is not None else None,
         "page_map_pages": len(page_map),
+        "page_map_scope": "observed trace pages" if sparse_page_map else "complete dbstat map",
         "trace_kind": "APSW VFS xRead requests; not a complete logical reference trace",
         "physical_io_note": "A VFS xRead can be satisfied by the OS page cache; this trace does not prove physical disk I/O.",
         "prefetch_config": prefetch_config,

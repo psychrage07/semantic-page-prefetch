@@ -18,6 +18,9 @@ def test_generate_database_and_dbstat(tmp_path: Path):
     mapping = build_page_map(db)
     assert mapping
     assert all("page_type" in row and "object" in row for row in mapping.values())
+    sparse = build_page_map(db, {1, 2})
+    assert sparse
+    assert set(sparse).issubset({1, 2})
 
 
 def test_generated_workloads_execute_without_error(tmp_path: Path):
@@ -39,3 +42,14 @@ def test_generator_rejects_graph_without_possible_edge(tmp_path: Path):
     import pytest
     with pytest.raises(ValueError, match="graph_nodes must be >= 2"):
         generate_database(tmp_path / "invalid.sqlite", customers=2, products=2, orders=2, graph_nodes=1)
+
+
+def test_generator_can_expand_relevant_rows_for_large_database_branch(tmp_path: Path):
+    db = tmp_path / "large-branch-fixture.sqlite"
+    meta = generate_database(db, customers=20, products=10, orders=40,
+                             graph_nodes=20, edges_per_node=1,
+                             item_payload_bytes=900, seed=9)
+    assert meta["item_payload_bytes"] == 900
+    with sqlite3.connect(db) as con:
+        lengths = con.execute("SELECT DISTINCT length(payload) FROM order_items").fetchall()
+    assert lengths == [(900,)]

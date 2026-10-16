@@ -4,6 +4,7 @@ import hashlib
 import json
 import math
 import random
+import shutil
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -321,6 +322,7 @@ def train_models(sequences_path: str | Path, page_map_path: str | Path, output_d
     index.page_map_sha256 = page_map_digest(page_map)
     out = Path(output_dir)
     out.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(page_map_path, out / "page_map.json")
     rng_a = random.Random(seed)
     results: dict[str, Any] = {
         "seed": seed, "split_seed": split_seed,

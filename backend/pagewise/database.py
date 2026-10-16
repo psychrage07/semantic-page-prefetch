@@ -41,7 +41,8 @@ CREATE TABLE order_items (
     order_id INTEGER NOT NULL REFERENCES orders(order_id),
     product_id INTEGER NOT NULL REFERENCES products(product_id),
     quantity INTEGER NOT NULL,
-    unit_price_cents INTEGER NOT NULL
+    unit_price_cents INTEGER NOT NULL,
+    payload BLOB NOT NULL
 );
 CREATE TABLE account_edges (
     src_node INTEGER NOT NULL,
@@ -73,6 +74,7 @@ def generate_database(
     avg_items_per_order: int = 3,
     graph_nodes: int = 5_000,
     edges_per_node: int = 3,
+    item_payload_bytes: int = 0,
     seed: int = 17,
     overwrite: bool = False,
 ) -> dict[str, Any]:
@@ -96,8 +98,12 @@ def generate_database(
     }.items():
         if value < 1:
             raise ValueError(f"{key} must be >= 1")
+    if item_payload_bytes < 0:
+        raise ValueError("item_payload_bytes must be >= 0")
 
     rng = random.Random(seed)
+    payload_rng = random.Random(seed + 991)
+    item_payload = payload_rng.randbytes(item_payload_bytes)
     started = time.perf_counter()
     con = sqlite3.connect(path)
     try:
@@ -120,7 +126,7 @@ def generate_database(
         # Skewed customer choices make the working set non-uniform while keeping
         # IDs valid. All values and workload generation are deterministic per seed.
         order_batch: list[tuple[int, int, int, str, int]] = []
-        item_batch: list[tuple[int, int, int, int, int]] = []
+        item_batch: list[tuple[int, int, int, int, int, bytes]] = []
         item_id = 1
         base_timestamp = 1_700_000_000
         for order_id in range(1, orders + 1):
@@ -138,19 +144,19 @@ def generate_database(
                 qty = rng.randint(1, 5)
                 price = rng.randint(199, 100_000)
                 total += qty * price
-                rows_for_order.append((item_id, order_id, product_id, qty, price))
+                rows_for_order.append((item_id, order_id, product_id, qty, price, item_payload))
                 item_id += 1
             order_batch.append((order_id, customer_id, created_at, status, total))
             item_batch.extend(rows_for_order)
             if len(order_batch) >= 1_000:
                 con.executemany("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", order_batch)
-                con.executemany("INSERT INTO order_items VALUES (?, ?, ?, ?, ?)", item_batch)
+                con.executemany("INSERT INTO order_items VALUES (?, ?, ?, ?, ?, ?)", item_batch)
                 con.commit()
                 order_batch.clear()
                 item_batch.clear()
         if order_batch:
             con.executemany("INSERT INTO orders VALUES (?, ?, ?, ?, ?)", order_batch)
-            con.executemany("INSERT INTO order_items VALUES (?, ?, ?, ?, ?)", item_batch)
+            con.executemany("INSERT INTO order_items VALUES (?, ?, ?, ?, ?, ?)", item_batch)
             con.commit()
 
         # Small, data-dependent graph workload stored in the same database.
@@ -191,7 +197,10 @@ def generate_database(
         "table_rows": counts, "dbstat_available": any(dbstat_support.values()),
         "dbstat_support": dbstat_support,
         "generation_seconds": round(time.perf_counter() - started, 3),
-        "profile": "development; scale rows only after validating the pipeline",
+        "item_payload_bytes": item_payload_bytes,
+        "profile": ("large-database branch with an inline order-item payload"
+                    if item_payload_bytes else
+                    "development; scale rows only after validating the pipeline"),
     }
     path.with_suffix(path.suffix + ".metadata.json").write_text(json.dumps(metadata, indent=2), encoding="utf-8")
     return metadata

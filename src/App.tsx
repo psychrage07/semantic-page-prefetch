@@ -243,6 +243,14 @@ function formatDeltaMs(value: unknown) {
   return `${sign}${value.toFixed(3)} ms`;
 }
 
+function numericValue(value: unknown): number | null {
+  return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+function latencyChange(baseline: number | null, candidate: number | null) {
+  return baseline != null && baseline > 0 && candidate != null ? ((baseline - candidate) / baseline) * 100 : null;
+}
+
 function policyLabel(policy: string) {
   const labels: Record<string, string> = {
     none: "No prefetch",
@@ -253,6 +261,9 @@ function policyLabel(policy: string) {
     model_a: "Model A",
     model_b: "Model B",
     oracle: "Oracle",
+    oracle_miss: "Oracle miss control",
+    null: "Null control",
+    hybrid: "Hybrid",
   };
   return labels[policy] ?? policy.replaceAll("_", " ");
 }
@@ -287,17 +298,21 @@ function measuredSeriesForPolicy(suite: DashboardSuite | null, policyId: PolicyI
 }
 
 function measuredMetricFor(snapshot: DashboardSnapshot | null, policyId: PolicyId) {
+  return measuredMetricForStrategy(snapshot, strategyForPolicy(policyId));
+}
+
+function measuredMetricForStrategy(snapshot: DashboardSnapshot | null, strategyName: string) {
+  if (!snapshot) return null;
   const suite = measuredSuite(snapshot);
-  const strategy = measuredStrategy(suite, strategyForPolicy(policyId));
-  if (!strategy) return null;
-  const offline = measuredPolicy(snapshot, strategyForPolicy(policyId));
+  const strategy = measuredStrategy(suite, strategyName);
+  const offline = measuredPolicy(snapshot, strategyName);
   return {
-    p50: typeof strategy.median_of_run_p50_ms === "number" ? strategy.median_of_run_p50_ms : null,
-    p95: typeof strategy.median_of_run_p95_ms === "number" ? strategy.median_of_run_p95_ms : null,
-    hitRate: typeof strategy.mean_cache_hit_pct === "number" ? strategy.mean_cache_hit_pct : null,
-    useful: typeof strategy.mean_useful_prefetches === "number" ? strategy.mean_useful_prefetches : null,
-    wasted: typeof strategy.mean_wasted_prefetches_evicted === "number" ? strategy.mean_wasted_prefetches_evicted : null,
-    top1: offline?.top1_accuracy_pct ?? null,
+    p50: numericValue(strategy?.median_of_run_p50_ms),
+    p95: numericValue(strategy?.median_of_run_p95_ms),
+    hitRate: numericValue(strategy?.mean_cache_hit_pct),
+    useful: numericValue(strategy?.mean_useful_prefetches),
+    wasted: numericValue(strategy?.mean_wasted_prefetches_evicted),
+    top1: numericValue(offline?.top1_accuracy_pct),
   };
 }
 
@@ -364,8 +379,8 @@ function metricFor(workloadId: WorkloadId, modeId: ModeId, cacheMb: number, poli
   };
 }
 
-function formatMs(value: number) {
-  return `${value.toFixed(1)} ms`;
+function formatMs(value: number | null | undefined) {
+  return value != null ? `${value.toFixed(1)} ms` : "n/a";
 }
 
 function downloadFile(filename: string, content: string, type = "text/plain") {
@@ -439,7 +454,7 @@ function DemoNotice({ onOpenMethod, snapshot }: { onOpenMethod: () => void; snap
       <span className="notice-mark" aria-hidden="true" />
       <div className="notice-copy">
         <strong>{snapshot ? "Measured artifact loaded" : "Fixture mode"}</strong>
-        <span>{snapshot ? `Backend snapshot from ${snapshot.runtime_suites?.length ?? 0} runtime suite(s) and ${snapshot.prediction?.policies?.length ?? 0} predictor rows.` : "Illustrative browser data only. No SQLite VFS, model, or disk measurements are connected."}</span>
+        <span>{snapshot ? `Backend snapshot from ${snapshot.runtime_suites?.length ?? 0} runtime suite(s) and ${snapshot.prediction?.policies?.length ?? 0} predictor rows. Unavailable measurements are shown as n/a.` : "Illustrative browser data only. No SQLite VFS, model, or disk measurements are connected."}</span>
       </div>
       <button className="text-action" onClick={onOpenMethod}>
         Implementation boundary <Icon name="arrow" size={15} />
@@ -555,7 +570,7 @@ function LatencyChart({
   const waves = [0.05, -0.08, 0.02, 0.16, -0.11, 0.07, -0.04, 0.2, -0.13, 0.03, 0.12, -0.07, 0.04];
   const suite = measuredSuite(snapshot);
   const sequence = useMemo(() => {
-    if (suite?.query_latency_series?.length) {
+    if (snapshot) {
       return chartPolicies.map((policyId) => {
         const measured = measuredSeriesForPolicy(suite, policyId);
         return {
@@ -572,9 +587,9 @@ function LatencyChart({
       });
       return { policyId, values };
     });
-  }, [workloadId, modeId, cacheMb, degree, suite]);
-  const maxPoints = Math.max(...sequence.map((line) => line.values.length), waves.length);
-  const maxValue = Math.ceil(Math.max(...sequence.flatMap((line) => line.values)) / 5) * 5 + 5;
+  }, [workloadId, modeId, cacheMb, degree, suite, snapshot]);
+  const maxPoints = Math.max(1, ...sequence.map((line) => line.values.length));
+  const maxValue = Math.ceil(Math.max(0, ...sequence.flatMap((line) => line.values)) / 5) * 5 + 5;
   const y = (value: number) => margin.top + plotHeight - (value / maxValue) * plotHeight;
   const x = (index: number) => margin.left + (index / Math.max(1, maxPoints - 1)) * plotWidth;
 
@@ -586,12 +601,13 @@ function LatencyChart({
     <section className="chart-panel panel" aria-labelledby="latency-title">
       <div className="panel-heading chart-heading">
         <div>
-          <p className="eyebrow">REPLAY PROFILE / 120 QUERIES</p>
+          <p className="eyebrow">{snapshot ? "MEASURED QUERY LATENCIES" : "ILLUSTRATIVE REPLAY PROFILE"}</p>
           <h2 id="latency-title">Query latency</h2>
         </div>
-        <div className="unit-label"><span className="unit-dot" /> p50 estimate <span>/ ms</span></div>
+        <div className="unit-label"><span className="unit-dot" /> {snapshot ? "query elapsed time" : "p50 estimate"} <span>/ ms</span></div>
       </div>
-      <div className="chart-plot" role="img" aria-label="Illustrative query latency comparison over 120 fixture queries">
+      <div className="chart-plot" role="img" aria-label={snapshot ? "Measured query latency comparison" : "Illustrative query latency comparison"}>
+        {snapshot && sequence.length === 0 ? <p className="empty-state">No measured query latency series available in this snapshot.</p> :
         <svg viewBox={`0 0 ${width} ${height}`} preserveAspectRatio="none">
           {[0, 1, 2, 3, 4].map((tick) => {
             const value = (maxValue / 4) * tick;
@@ -621,11 +637,11 @@ function LatencyChart({
               </g>
             );
           })}
-        </svg>
+        </svg>}
       </div>
       <div className="chart-footer">
         <div className="chart-legend" aria-label="Toggle chart series">
-          {chartPolicies.map((policyId) => {
+          {sequence.map(({ policyId }) => {
             const policy = POLICY_INFO.find((item) => item.id === policyId)!;
             return (
               <button key={policyId} className={`legend-button ${visible.includes(policyId) ? "is-on" : ""}`} onClick={() => toggle(policyId)} aria-pressed={visible.includes(policyId)}>
@@ -636,7 +652,7 @@ function LatencyChart({
         </div>
         <span className="axis-caption">query sequence</span>
       </div>
-      <p className="chart-footnote">{suite?.query_latency_series?.length ? `Measured query latencies from ${suite.name}; capped to first ${maxPoints} queries per strategy.` : "Deterministic fixture curve. Replace with query-level SQLite timings for measured results."}</p>
+      <p className="chart-footnote">{snapshot ? sequence.length ? `Measured query latencies from ${suite?.name}; capped to first ${maxPoints} queries per strategy. Only available series are shown.` : "This snapshot has no query latency series for the displayed policies." : "Deterministic fixture curve. Replace with query-level SQLite timings for measured results."}</p>
     </section>
   );
 }
@@ -731,30 +747,31 @@ function MetricStrip({
   const measuredStock = measuredMetricFor(snapshot, "stock");
   const selected = metricFor(workloadId, modeId, cacheMb, activePolicy, degree);
   const stock = metricFor(workloadId, modeId, cacheMb, "stock", degree);
-  const selectedP50 = measuredSelected?.p50 ?? selected.p50;
-  const stockP50 = measuredStock?.p50 ?? stock.p50;
-  const delta = ((stockP50 - selectedP50) / stockP50) * 100;
+  const selectedMetrics = snapshot ? measuredSelected : selected;
+  const selectedP50 = selectedMetrics?.p50 ?? null;
+  const stockP50 = snapshot ? measuredStock?.p50 ?? null : stock.p50;
+  const delta = latencyChange(stockP50, selectedP50);
   return (
     <section className="metric-strip" aria-label={snapshot ? "Measured current policy metrics" : "Illustrative current policy metrics"}>
       <div className="metric-item metric-primary">
         <span>{POLICY_INFO.find((policy) => policy.id === activePolicy)?.label} / p50</span>
         <strong>{formatMs(selectedP50)}</strong>
-        <small>{delta >= 0 ? `${delta.toFixed(1)}% below` : `${Math.abs(delta).toFixed(1)}% above`} no prefetch</small>
+        <small>{delta == null ? "Runtime comparison unavailable" : `${Math.abs(delta).toFixed(1)}% ${delta >= 0 ? "below" : "above"} no prefetch`}</small>
       </div>
       <div className="metric-item">
         <span>p95 latency</span>
-        <strong>{measuredSelected?.p95 ? formatMs(measuredSelected.p95) : formatMs(selected.p95)}</strong>
-        <small>{snapshot ? "suite median" : "same fixture run"}</small>
+        <strong>{formatMs(selectedMetrics?.p95)}</strong>
+        <small>{snapshot ? "available suite measurement" : "same fixture run"}</small>
       </div>
       <div className="metric-item">
         <span>App-cache hit rate</span>
-        <strong>{measuredSelected?.hitRate != null ? `${measuredSelected.hitRate.toFixed(1)}%` : `${selected.hitRate}%`}</strong>
+        <strong>{formatPctValue(selectedMetrics?.hitRate)}</strong>
         <small>bounded LRU cache</small>
       </div>
       <div className="metric-item">
         <span>Useful prefetches</span>
-        <strong>{measuredSelected?.useful != null ? measuredSelected.useful.toFixed(0) : `${selected.useful}%`}</strong>
-        <small>{measuredSelected?.wasted != null ? `${measuredSelected.wasted.toFixed(0)} wasted` : `${selected.wasted}% marked wasted`}</small>
+        <strong>{selectedMetrics?.useful != null ? snapshot ? selectedMetrics.useful.toFixed(0) : `${selectedMetrics.useful}%` : "n/a"}</strong>
+        <small>{selectedMetrics?.wasted != null ? snapshot ? `${selectedMetrics.wasted.toFixed(0)} wasted` : `${selectedMetrics.wasted}% marked wasted` : "Waste measurement unavailable"}</small>
       </div>
     </section>
   );
@@ -781,45 +798,54 @@ function ResultsTable({
 }) {
   const displayPolicies: PolicyId[] = compact || snapshot ? ["stock", "sequential", "markov", "modelA", "modelB"] : ["stock", "sequential", "markov", "modelA", "modelB", "oracle"];
   const measuredBaseline = measuredMetricFor(snapshot, "stock");
-  const baseline = measuredBaseline?.p50 ?? metricFor(workloadId, modeId, cacheMb, "stock", degree).p50;
+  const baseline = snapshot ? measuredBaseline?.p50 ?? null : metricFor(workloadId, modeId, cacheMb, "stock", degree).p50;
+  const rows = displayPolicies.map((policyId) => {
+    const policy = POLICY_INFO.find((item) => item.id === policyId)!;
+    return { strategy: strategyForPolicy(policyId), policyId: policyId as PolicyId | null, label: policy.label, color: policy.color };
+  });
+  if (snapshot) {
+    for (const row of measuredSuite(snapshot)?.strategies ?? []) {
+      if (typeof row.strategy === "string" && !rows.some((item) => item.strategy === row.strategy)) {
+        rows.push({ strategy: row.strategy, policyId: null, label: policyLabel(row.strategy), color: "#687466" });
+      }
+    }
+  }
 
   return (
     <div className="results-table-wrap">
       <table className={`results-table ${compact ? "compact-table" : ""}`}>
         <thead><tr><th>Strategy</th><th>p50</th><th>p95</th><th>Cache hit</th><th>Useful</th><th>Wasted</th>{!compact && <th>Top-1</th>}</tr></thead>
         <tbody>
-          {displayPolicies.map((policyId) => {
-            const policy = POLICY_INFO.find((item) => item.id === policyId)!;
-            const measured = measuredMetricFor(snapshot, policyId);
-            const fixtureMetrics = metricFor(workloadId, modeId, cacheMb, policyId, degree);
-            const p50 = measured?.p50 ?? fixtureMetrics.p50;
-            const p95 = measured?.p95 ?? fixtureMetrics.p95;
-            const hitRate = measured?.hitRate ?? fixtureMetrics.hitRate;
-            const useful = measured?.useful ?? fixtureMetrics.useful;
-            const wasted = measured?.wasted ?? fixtureMetrics.wasted;
-            const top1 = measured?.top1 ?? fixtureMetrics.top1;
-            const change = ((baseline - p50) / baseline) * 100;
+          {rows.map((row) => {
+            const policyId = row.policyId;
+            const metrics = snapshot ? measuredMetricForStrategy(snapshot, row.strategy) : policyId ? metricFor(workloadId, modeId, cacheMb, policyId, degree) : null;
+            const p50 = metrics?.p50 ?? null;
+            const change = latencyChange(baseline, p50);
             return (
-              <tr key={policyId} className={`${activePolicy === policyId ? "selected-row" : ""} ${policyId === "oracle" ? "oracle-row" : ""}`} onClick={() => onSelect(policyId)} tabIndex={0} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") onSelect(policyId); }}>
-                <td><span className="strategy-name"><i style={{ backgroundColor: policy.color }} />{policy.label}</span></td>
-                <td className="number-cell">{formatMs(p50)}{policyId !== "stock" && <small className={`delta ${change >= 0 ? "delta-down" : "delta-up"}`}>{change >= 0 ? "-" : "+"}{Math.abs(change).toFixed(1)}%</small>}</td>
-                <td className="number-cell">{formatMs(p95)}</td>
-                <td className="number-cell">{hitRate == null ? "n/a" : `${Number(hitRate).toFixed(snapshot ? 1 : 0)}%`}</td>
-                <td className="number-cell">{policyId === "stock" ? "n/a" : snapshot ? Number(useful).toFixed(0) : `${useful}%`}</td>
-                <td className="number-cell">{policyId === "stock" ? "n/a" : snapshot ? Number(wasted).toFixed(0) : `${wasted}%`}</td>
-                {!compact && <td className="number-cell">{policyId === "stock" ? "n/a" : top1 == null ? "n/a" : `${Number(top1).toFixed(1)}%`}</td>}
+              <tr key={row.strategy} className={`${activePolicy === policyId ? "selected-row" : ""} ${policyId === "oracle" ? "oracle-row" : ""}`} onClick={policyId ? () => onSelect(policyId) : undefined} tabIndex={policyId ? 0 : undefined} onKeyDown={policyId ? (event) => { if (event.key === "Enter" || event.key === " ") onSelect(policyId); } : undefined}>
+                <td><span className="strategy-name"><i style={{ backgroundColor: row.color }} />{row.label}</span></td>
+                <td className="number-cell">{formatMs(p50)}{policyId !== "stock" && change != null && <small className={`delta ${change >= 0 ? "delta-down" : "delta-up"}`}>{change >= 0 ? "-" : "+"}{Math.abs(change).toFixed(1)}%</small>}</td>
+                <td className="number-cell">{formatMs(metrics?.p95)}</td>
+                <td className="number-cell">{formatPctValue(metrics?.hitRate, snapshot ? 1 : 0)}</td>
+                <td className="number-cell">{policyId === "stock" || metrics?.useful == null ? "n/a" : snapshot ? metrics.useful.toFixed(0) : `${metrics.useful}%`}</td>
+                <td className="number-cell">{policyId === "stock" || metrics?.wasted == null ? "n/a" : snapshot ? metrics.wasted.toFixed(0) : `${metrics.wasted}%`}</td>
+                {!compact && <td className="number-cell">{formatPctValue(metrics?.top1)}</td>}
               </tr>
             );
           })}
         </tbody>
       </table>
+      {snapshot && <p className="chart-footnote">n/a means a measurement is unavailable. Offline accuracy is reported independently of runtime availability.</p>}
     </div>
   );
 }
 
 function PredictionHeatmap({ workloadId, snapshot }: { workloadId: WorkloadId; snapshot: DashboardSnapshot | null }) {
   const measured = measuredTraceEvents(snapshot);
-  const events = (measured.length ? measured : TRACE_EVENTS.filter((event) => event.workload === workloadId)).slice(0, 36);
+  const events = (snapshot ? measured : TRACE_EVENTS.filter((event) => event.workload === workloadId)).slice(0, 36);
+  if (snapshot && events.length === 0) {
+    return <section className="heatmap-panel"><h2>Prediction alignment</h2><p className="empty-state">No measured trace samples available in this snapshot.</p></section>;
+  }
   const rows = [
     { label: "Demand", key: "demand" },
     { label: "Model B", key: "model" },
@@ -907,7 +933,7 @@ function TraceExplorer({
   snapshot: DashboardSnapshot | null;
 }) {
   const measured = measuredTraceEvents(snapshot);
-  const sourceEvents = measured.length ? measured : TRACE_EVENTS;
+  const sourceEvents = snapshot ? measured : TRACE_EVENTS;
   const filteredEvents = useMemo(() => {
     const normalized = search.trim().toLowerCase();
     return sourceEvents.filter((event) => {
@@ -918,6 +944,10 @@ function TraceExplorer({
     });
   }, [workloadFilter, search, onlyWasted, measured.length, sourceEvents]);
   const selected = filteredEvents.find((event) => event.id === selectedId) ?? filteredEvents[0] ?? null;
+
+  if (snapshot && sourceEvents.length === 0) {
+    return <><PageIntro eyebrow="TRACE INSPECTOR / MEASURED SNAPSHOT" title="Follow a page through the query." description="The loaded snapshot does not include page-level trace samples." /><section className="panel"><p className="empty-state">No measured trace samples available in this snapshot.</p></section></>;
+  }
 
   return (
     <>
@@ -1000,7 +1030,7 @@ function ComparisonPage({
   const suite = measuredSuite(snapshot);
   return (
     <>
-      <PageIntro eyebrow={snapshot ? "MODEL EVALUATION / MEASURED SUITE" : "MODEL EVALUATION / CONTROLLED REPLAY"} title="Compare the predictor, then count its cost." description={snapshot ? "Runtime rows come from the exported backend suite; select a strategy to drive the measured overview metrics." : "One query order, one bounded LRU cache, and one miss-latency profile for every strategy. Select a row to drive the overview metrics."} trailing={<span className={snapshot ? "measured-badge" : "fixture-tag"}>{snapshot ? "MEASURED RESULTS" : "FIXTURE RESULTS"}</span>} />
+      <PageIntro eyebrow={snapshot ? "MODEL EVALUATION / MEASURED SUITE" : "MODEL EVALUATION / CONTROLLED REPLAY"} title="Compare the predictor, then count its cost." description={snapshot ? "Available results come from the backend export. Missing runtime measurements are shown as n/a; offline accuracy may still be available." : "One query order, one bounded LRU cache, and one miss-latency profile for every strategy. Select a row to drive the overview metrics."} trailing={<span className={snapshot ? "measured-badge" : "fixture-tag"}>{snapshot ? "MEASURED RESULTS" : "FIXTURE RESULTS"}</span>} />
   <section className="comparison-context">
         <div><span className="eyebrow">ACTIVE WORKLOAD</span><strong>{snapshot ? suite?.name ?? "backend suite" : WORKLOADS[workloadId].label}</strong><small>{snapshot ? `${suite?.queries_per_run ?? "n/a"} queries per run` : `${WORKLOADS[workloadId].reads.toLocaleString()} fixture read events`}</small></div>
         <div><span className="eyebrow">MISS PROFILE</span><strong>{snapshot ? suite?.mode ?? "measured" : MODES[modeId].label}</strong><small>{snapshot ? `seeds ${(suite?.seeds ?? []).join(", ")}` : `${cacheMb} MB cache / degree ${degree} / shared LRU policy`}</small></div>
@@ -1028,7 +1058,7 @@ function ComparisonPage({
           <p className="formula-note">ceil(inference cost / miss delay). Ignores overlap, CPU contention, and extra I/O; replace with ONNX timing and end-to-end runs.</p>
         </section>
       </div>
-      <section className="oracle-note"><span className="oracle-symbol">O</span><div><strong>Oracle is a ceiling, not a deployable policy.</strong><p>It replays the true future page sequence. The gap to Oracle estimates the remaining headroom; it must never be included as a practical speedup claim.</p></div><span className="oracle-value">{formatMs(metricFor(workloadId, modeId, cacheMb, "oracle", degree).p50)}<small>fixture p50</small></span></section>
+      <section className="oracle-note"><span className="oracle-symbol">O</span><div><strong>Oracle is a future-aware diagnostic control.</strong><p>It uses future reads to explore prefetching headroom under the tested scheduling and storage conditions. It is not a deployable predictor or a universal upper bound.</p></div><span className="oracle-value">{snapshot ? formatMs(numericValue(measuredStrategy(suite, "oracle_miss")?.median_of_run_p50_ms ?? measuredStrategy(suite, "oracle")?.median_of_run_p50_ms)) : formatMs(metricFor(workloadId, modeId, cacheMb, "oracle", degree).p50)}<small>{snapshot ? "measured p50" : "fixture p50"}</small></span></section>
     </>
   );
 }

@@ -131,4 +131,22 @@ reported rather than silently dropped. Primary numbers come from the virtual-tim
 
 ## Amendments
 
-(none yet — append dated entries here)
+### 2026-10-15 — large-database and NO_HEADROOM branch
+
+The small development database had no cache cell satisfying cache pages <= observed
+working-set pages / 4. The preregistered large-database branch was therefore executed on
+an 8.62 GB database. To make generation tractable while expanding workload-relevant leaf
+pages, each `order_items` row contains a deterministic 900-byte payload. Large-database
+training traces store `dbstat` metadata only for pages observed in that trace; the same
+frozen sparse map is bundled with the trained models and used at runtime.
+
+The large-database shared-device grid produced less than 10% `oracle_miss` headroom in
+every eligible cell, and its best cell was confirmed in the real runtime. This triggers
+`NO_HEADROOM`. Under this branch, M5/M6 neural runtime optimization stops. The final
+runtime confirmation uses fresh seeds 911-915 for `none`, `null`, and `oracle_miss` at the
+best grid cell. H3/H4 are not supported if the paired oracle-vs-none interval remains
+strictly slower; Holm correction is then not applicable because no family of final neural
+runtime comparisons is formed. If the final oracle result unexpectedly shows at least
+10% headroom, runtime tuning and the full declared strategy comparison must reopen.
+
+Offline H1/H2/H5 evaluation remains unchanged and uses final model seeds 911-915.

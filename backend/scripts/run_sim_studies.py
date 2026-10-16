@@ -3,7 +3,7 @@
 Subcommands
     calibrate  run timed none/null runs plus demand references across cache sizes,
                fit the per-read and per-job costs, measure the true sleep error, and
-               write runs/calibration.json.
+               write calibration.json below the requested output directory.
     validate   reproduce real runtime runs in the simulator and report the error.
     headroom   run the oracle_miss headroom grid and draw a heatmap.
 
@@ -43,13 +43,14 @@ DEFAULT_DB = "runs/experiment-latest/pagewise-medium.sqlite"
 DEFAULT_INDEX = "runs/experiment-latest/models/candidate_index.json"
 
 
-def _run_timed(db_path: str, target_dir: pathlib.Path, cache_pages: int, strategy: str, *,
+def _run_timed(db_path: str, candidate_index_path: str, target_dir: pathlib.Path,
+               cache_pages: int, strategy: str, *,
                miss_delay_ms: float, storage_model: str, workers: int, degree: int,
                record_reference: bool, queries: int = 100, seed: int = 101) -> None:
     target_dir.mkdir(parents=True, exist_ok=True)
     cfg = {
         "strategy": strategy,
-        "candidate_index_path": DEFAULT_INDEX,
+        "candidate_index_path": candidate_index_path,
         "model_path": None,
         "semantic": False,
         "cache_pages": int(cache_pages),
@@ -81,15 +82,20 @@ def cmd_calibrate(args: argparse.Namespace) -> dict:
     timer_start = time.perf_counter()
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    db = pathlib.Path(DEFAULT_DB).resolve()
+    db = pathlib.Path(args.db).resolve()
+    candidate_index = pathlib.Path(args.candidate_index).resolve()
+    if not db.exists():
+        raise FileNotFoundError(db)
+    if not candidate_index.exists():
+        raise FileNotFoundError(candidate_index)
 
     entries = {}
     for cache_pages in CALIBRATION_CONFIGS:
         none_dir = out / f"none-c{cache_pages}"
-        _run_timed(str(db), none_dir, cache_pages, "none", miss_delay_ms=0.0,
+        _run_timed(str(db), str(candidate_index), none_dir, cache_pages, "none", miss_delay_ms=0.0,
                    storage_model="shared", workers=1, degree=2, record_reference=False)
         reference_dir = out / f"ref-c{cache_pages}"
-        _run_timed(str(db), reference_dir, cache_pages, "none", miss_delay_ms=0.0,
+        _run_timed(str(db), str(candidate_index), reference_dir, cache_pages, "none", miss_delay_ms=0.0,
                    storage_model="shared", workers=1, degree=2, record_reference=True)
         runtime = json.loads((none_dir / "runtime_stats.json").read_text(encoding="utf-8"))
         metadata = json.loads((none_dir / "run_metadata.json").read_text(encoding="utf-8"))
@@ -110,7 +116,7 @@ def cmd_calibrate(args: argparse.Namespace) -> dict:
     null_deltas = []
     for cache_pages in CALIBRATION_CONFIGS:
         null_dir = out / f"null-c{cache_pages}"
-        _run_timed(str(db), null_dir, cache_pages, "null", miss_delay_ms=0.0,
+        _run_timed(str(db), str(candidate_index), null_dir, cache_pages, "null", miss_delay_ms=0.0,
                    storage_model="shared", workers=1, degree=2, record_reference=False)
         runtime = json.loads((null_dir / "runtime_stats.json").read_text(encoding="utf-8"))
         metadata = json.loads((null_dir / "run_metadata.json").read_text(encoding="utf-8"))
@@ -128,7 +134,7 @@ def cmd_calibrate(args: argparse.Namespace) -> dict:
     # caches (64, 256) stay clean validation points.
     enqueue_by_workers = {1: enqueue_us}
     print("[calibrate] adding a workers=4 null run at cache 32 for the worker scaling")
-    _run_timed(str(db), out / "null-w4-c32", 32, "null", miss_delay_ms=0.0,
+    _run_timed(str(db), str(candidate_index), out / "null-w4-c32", 32, "null", miss_delay_ms=0.0,
                storage_model="shared", workers=4, degree=2, record_reference=False)
     runtime_w4 = json.loads((out / "null-w4-c32" / "runtime_stats.json").read_text(encoding="utf-8"))
     metadata_w4 = json.loads((out / "null-w4-c32" / "run_metadata.json").read_text(encoding="utf-8"))
@@ -170,6 +176,7 @@ def cmd_calibrate(args: argparse.Namespace) -> dict:
     calibration = {
         "schema_version": 1,
         "database": str(db),
+        "candidate_index": str(candidate_index),
         "queries_per_calibration_run": CALIBRATION_QUERIES,
         "sleep_measured_ms": sleep_measured,
         "sleep_error_note": ("time.sleep() overshoots sub-millisecond requests on this host; "
@@ -178,7 +185,7 @@ def cmd_calibrate(args: argparse.Namespace) -> dict:
         "costs": costs,
         "calibration_seconds": round(sleeps_total, 2),
     }
-    target_path = pathlib.Path("runs/calibration.json")
+    target_path = out / "calibration.json"
     target_path.parent.mkdir(parents=True, exist_ok=True)
     target_path.write_text(json.dumps(calibration, indent=2), encoding="utf-8")
     print(f"[calibrate] wrote {target_path}")
@@ -220,7 +227,8 @@ def _scaled_costs(costs: Costs, workers: int, enqueue_by_workers: dict[int, floa
     return replace(costs, enqueue_us=value)
 
 
-def _reference_for(refs_dir: pathlib.Path, db_path: str, cache_pages: int, seed: int, queries: int) -> Any:
+def _reference_for(refs_dir: pathlib.Path, db_path: str, candidate_index_path: str,
+                   cache_pages: int, seed: int, queries: int) -> Any:
     """Load (or generate) the demand reference for one (cache, seed) pair.
 
     The demand page stream depends on both the cache size *and* the workload seed,
@@ -232,7 +240,7 @@ def _reference_for(refs_dir: pathlib.Path, db_path: str, cache_pages: int, seed:
     path = key / "demand_reference.json"
     if path.exists():
         return load_reference(path)
-    _run_timed(db_path, key, cache_pages, "none", miss_delay_ms=0.0,
+    _run_timed(db_path, candidate_index_path, key, cache_pages, "none", miss_delay_ms=0.0,
                storage_model="shared", workers=1, degree=2, record_reference=True,
                queries=queries, seed=seed)
     return load_reference(path)
@@ -286,6 +294,7 @@ def cmd_validate(args: argparse.Namespace) -> dict:
     refs_dir = out / "references"
     refs_dir.mkdir(parents=True, exist_ok=True)
     db_path = str(pathlib.Path(calibration.get("database") or DEFAULT_DB).resolve())
+    candidate_index_path = str(pathlib.Path(calibration.get("candidate_index") or DEFAULT_INDEX).resolve())
     tables_by_reference: dict[str, dict[str, Any]] = {}
     generated = 0
     measured_sleep = calibration.get("sleep_measured_ms", {})
@@ -393,7 +402,8 @@ def cmd_validate(args: argparse.Namespace) -> dict:
                 reference = load_reference(pathlib.Path(str(local_ref)))
             else:
                 missing = not (refs_dir / ref_key / "demand_reference.json").exists()
-                reference = _reference_for(refs_dir, db_path, spec["cache_pages"], spec["seed"], spec["queries"])
+                reference = _reference_for(refs_dir, db_path, candidate_index_path,
+                                           spec["cache_pages"], spec["seed"], spec["queries"])
                 if missing:
                     generated += 1
             tables_by_reference[ref_key] = {"reference": reference, "tables": build_tables(reference)}
@@ -487,6 +497,8 @@ def cmd_headroom(args: argparse.Namespace) -> dict:
             print(f"[headroom] no reference for cache={cache_pages}; skipping")
             continue
         reference = load_reference(entry["reference_path"])
+        working_set_pages = len({page for query in reference for page in query["pages"]})
+        eligible_primary = cache_pages <= working_set_pages / 4
         tables = build_tables(reference)
         for delay_ms in delay_list:
             # Rule 6: model the achieved sleep, and record the label alongside it.
@@ -503,6 +515,8 @@ def cmd_headroom(args: argparse.Namespace) -> dict:
                 grids.append({
                     "cache_pages": cache_pages, "delay_ms": delay_ms,
                     "delay_ms_modelled": round(effective_delay, 4), "storage_model": storage_model,
+                    "working_set_pages": working_set_pages,
+                    "eligible_primary": eligible_primary and storage_model == "shared",
                     "none_total_ms": base.total_ms, "oracle_miss_total_ms": oracle.total_ms,
                     "headroom_pct": round(headroom, 3),
                     "useful_prefetch_pct": oracle.stats.get("useful_prefetch_pct", 0.0),
@@ -513,16 +527,24 @@ def cmd_headroom(args: argparse.Namespace) -> dict:
 
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "headroom_grid.json").write_text(json.dumps({"schema_version": 1, "grid": grids}, indent=2), encoding="utf-8")
     with (out / "headroom_grid.csv").open("w", newline="", encoding="utf-8") as handle:
         if grids:
             writer = csv.DictWriter(handle, fieldnames=list(grids[0].keys()))
             writer.writeheader()
             writer.writerows(grids)
     _plot_heatmap(grids, cache_list, delay_list, out)
-    best = max(grids, key=lambda row: row["headroom_pct"]) if grids else None
-    payload = {"schema_version": 1, "grid": grids, "best": best}
-    print(f"[headroom] best configuration: {best}")
+    primary_candidates = [row for row in grids if row["eligible_primary"]]
+    best = max(primary_candidates, key=lambda row: row["headroom_pct"]) if primary_candidates else None
+    if best and best["headroom_pct"] >= 10.0:
+        decision = "PRIMARY_CONFIGURATION"
+    elif args.large_database:
+        decision = "NO_HEADROOM"
+    else:
+        decision = "LARGE_DATABASE_REQUIRED"
+    payload = {"schema_version": 1, "selection_rule": "shared device and cache <= working set / 4",
+               "decision": decision, "grid": grids, "best_primary": best}
+    (out / "headroom_grid.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    print(f"[headroom] decision={decision}; best primary configuration: {best}")
     return payload
 
 
@@ -574,6 +596,7 @@ def main() -> int:
     calibrate = sub.add_parser("calibrate", help="fit simulator costs from real runs and measure sleep error")
     calibrate.add_argument("--out", default="runs/sim-calibration")
     calibrate.add_argument("--db", default=DEFAULT_DB)
+    calibrate.add_argument("--candidate-index", default=DEFAULT_INDEX)
 
     validate = sub.add_parser("validate", help="compare simulator totals against real run totals")
     validate.add_argument("--calibration", default="runs/calibration.json")
@@ -585,6 +608,8 @@ def main() -> int:
     headroom.add_argument("--out", default="runs/headroom-grid")
     headroom.add_argument("--caches", default=None)
     headroom.add_argument("--delays", default=None)
+    headroom.add_argument("--large-database", action="store_true",
+                          help="Apply the protocol's final NO_HEADROOM decision after the large-database branch")
 
     args = parser.parse_args()
     if args.command == "calibrate":

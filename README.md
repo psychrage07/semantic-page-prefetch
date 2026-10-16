@@ -1,5 +1,28 @@
 # Pagewise — SQLite learned page-prefetch research
 
+Project completion is tracked in [ROADMAP.md](ROADMAP.md), with live milestone evidence
+in [backend/PROGRESS.md](backend/PROGRESS.md).
+
+## Final experimental outcome
+
+The frozen five-seed evaluation is complete. Semantic Model B outperformed the matched
+history-only Model A offline, but simple Markov predictors were more accurate. Under the
+tested latency-injected shared-device conditions, even a future-aware oracle was slower
+than no prefetching, so the protocol reached `NO_HEADROOM` and did not open neural
+runtime tuning. See [backend/FINAL_SUMMARY.md](backend/FINAL_SUMMARY.md) for the results,
+[backend/FINAL_CONFIG_V2.json](backend/FINAL_CONFIG_V2.json) for the frozen settings, and
+[backend/FINAL_SOURCE_MANIFEST_V2.json](backend/FINAL_SOURCE_MANIFEST_V2.json) for the
+source snapshot.
+
+The dashboard shows `n/a` for unavailable measurements in a loaded snapshot and
+keeps offline prediction accuracy separate from runtime availability. Missing trace
+samples and latency series are shown as empty states. Browser fixtures are used
+when no backend snapshot is loaded.
+
+`FINAL_SOURCE_MANIFEST_V2.json` records the source used for evaluation. Later
+dashboard availability and `.env` ignore fixes are post-evaluation changes to
+`src/App.tsx` and `.gitignore`; the historical source manifest is retained.
+
 Pagewise investigates whether application-level database semantics help an MLP predict future SQLite database pages better than an otherwise equivalent history-only MLP, and whether any prediction improvement survives runtime overhead.
 
 **Research question:** Do table/index identity, page type, B-tree depth, and query-plan context improve learned page-prefetch prediction for irregular database workloads, and can the resulting prefetches reduce query latency under a controlled cache budget?

@@ -1,0 +1,87 @@
+{
+  "schema_version": 1,
+  "frozen_at": "2026-10-15",
+  "base_revision": "5b884f374f52bfc865391114987bbba7dc1a0ca1",
+  "protocol": "FINAL_EVALUATION_PROTOCOL_V2.md",
+  "source_manifest": "FINAL_SOURCE_MANIFEST_V2.json",
+  "database": {
+    "path": "runs/large-branch-20261015/pagewise-large.sqlite",
+    "seed": 42,
+    "page_size": 4096,
+    "page_count": 2103442,
+    "bytes": 8615698432,
+    "item_payload_bytes": 900,
+    "orders": 2320000,
+    "order_items": 8030380
+  },
+  "trace": {
+    "sequences": "runs/large-branch-20261015/trace/sequences.jsonl",
+    "workload": "runs/large-branch-20261015/trace/workload.jsonl",
+    "page_map": "runs/large-branch-20261015/trace/page_map.json",
+    "queries": 300,
+    "page_requests": 58466,
+    "observed_pages": 15620,
+    "sparse_page_map": true
+  },
+  "development": {
+    "split_seed": 7,
+    "training_seeds": [101, 102],
+    "tested_hidden_units": [64, 128],
+    "selected_hidden_units": 128,
+    "selection_metric": "model_b mean top1_accuracy_pct",
+    "hidden_64_metric": 76.1565,
+    "hidden_128_metric": 76.2555,
+    "epochs": 4,
+    "candidates": 32,
+    "top_k": 8,
+    "selected_report": "runs/large-branch-20261015/tuning-h128-restart/training_sweep_report.json"
+  },
+  "headroom": {
+    "decision": "NO_HEADROOM",
+    "grid_report": "runs/large-branch-20261015/headroom-grid/headroom_grid.json",
+    "confirmation_report": "runs/large-branch-20261015/oracle-best-shared/suite_summary.json",
+    "best_grid_cell": {
+      "cache_pages": 512,
+      "requested_delay_ms": 0.1,
+      "modelled_delay_ms": 0.5205,
+      "storage_model": "shared",
+      "working_set_pages": 8792,
+      "none_total_ms": 12756.7318,
+      "oracle_miss_total_ms": 15520.2589,
+      "headroom_pct": -21.663
+    },
+    "confirmation": {
+      "queries": 100,
+      "seed": 101,
+      "none_total_ms": 14576.9607,
+      "oracle_miss_total_ms": 21141.3774,
+      "paired_mean_delta_ms": 65.644167,
+      "paired_ci95_low_ms": 31.219329,
+      "paired_ci95_high_ms": 108.678227
+    }
+  },
+  "final_offline": {
+    "seeds": [911, 912, 913, 914, 915],
+    "epochs": 4,
+    "hidden_units": 128,
+    "candidates": 32,
+    "top_k": 8,
+    "output": "runs/large-branch-20261015/final-offline"
+  },
+  "final_runtime": {
+    "seeds": [911, 912, 913, 914, 915],
+    "queries_per_seed": 100,
+    "strategies": ["none", "null", "oracle_miss"],
+    "model_dir": "runs/large-branch-20261015/tuning-h128-restart/seed-101",
+    "cache_pages": 512,
+    "degree": 4,
+    "predict_on": "miss",
+    "queue_size": 128,
+    "requested_miss_delay_ms": 0.1,
+    "storage_model": "shared",
+    "drop_stale_jobs": true,
+    "prefetch_workers": 4,
+    "diagnostics": false,
+    "output": "runs/large-branch-20261015/final-runtime-no-headroom"
+  }
+}

@@ -1,61 +1,62 @@
-# Pagewise v2 — PROGRESS
+# Pagewise v2 progress
 
-Autonomous lead-engineer run. See `DECISIONS.md` for one-line rationale on each call.
+Last reconciled: 2026-10-15. The experimental roadmap is complete through the final
+evaluation and report export. All reported final results come from the current checkout.
 
-## Milestone status
+## Final status
 
-| Milestone | Status | Notes |
+| Milestone | Status | Evidence |
 |---|---|---|
-| M0 Housekeeping | DONE | manifest (1338 files), protocol v2, progress/decisions, baseline 41 tests |
-| M1 Fix oracle | DONE | `oracle_miss`, `oracle_next`, prefetch worker pool; sanity passes under independent; findings in `runs/m1-sanity/M1_FINDINGS.md`
-| M2 Offline study | DONE | splits, markov_ctx, model_b_table, 5 seeds x 2 splits, CIs, H1/H2/H5-offline, ablation + charts in `runs/m2-offline/` |
-| M3 Virtual-time simulator | NOT STARTED | `backend/pagewise/sim.py`, calibration, headroom grid |
-| M4 Headroom decision | NOT STARTED | branching: medium DB vs large DB |
-| M5 Real-runtime pipeline repair | BLOCKED on M3/M4 | |
-| M6 Cheaper Model B | BLOCKED | |
-| M7 Tuning + final protocol v2 | BLOCKED | seeds 911-915, frozen configs |
-| M8 Report + paper | BLOCKED | |
-| M9 Dashboard + demo | BLOCKED | |
-| FINAL VERIFICATION | PENDING | tests + frozen hashes + FINAL_SUMMARY.md |
+| Reproducible baseline | DONE | Fresh smoke pipeline under `runs/smoke-20261015-101548` |
+| Simulator validation | DONE | 8 of 10 validation cells within 15%; the two misses are retained as limitations |
+| Headroom decision | DONE | Large-database shared-device grid and runtime confirmation: `NO_HEADROOM` |
+| Runtime and cheaper-policy work | DONE | Protocol branch stopped neural runtime tuning after the future-aware oracle lost |
+| Final evaluation | DONE | Frozen config/source plus seeds 911-915 for offline and runtime studies |
+| Report and dashboard | DONE | Mechanical H1-H5 report, consolidated report, and measured dashboard snapshot exported |
+| Final verification | DONE | 63 backend tests pass, frontend production build passes, JSON and source manifest validate |
 
-## Next action
+## Frozen experiment
 
-Start **M3** (`backend/pagewise/sim.py`, virtual-time discrete-event simulator), then validate
-it against the real runtime within 15% on >=3 configurations and produce the oracle_miss
-headroom grid heatmap. Findings so far: `runs/m2-offline/M2_FINDINGS.md` and
-`runs/m1-sanity/M1_FINDINGS.md`.
+- Base revision: `5b884f374f52bfc865391114987bbba7dc1a0ca1` plus the changes identified by
+  `FINAL_SOURCE_MANIFEST_V2.json` (`48` files; aggregate SHA-256
+  `95052c3c8e594aab080908f230f451df67955621edae01b6806a8577b79075bf`).
+- Configuration: `FINAL_CONFIG_V2.json`.
+- Database: 8,615,698,432 bytes, 2,103,442 pages, 2.32 million orders, and
+  8,030,380 order items.
+- Trace: 300 queries, 58,466 page requests, and a sparse 15,620-page metadata map.
+- Selected development model: hidden size 128, four epochs, 32 candidates, top-k 8.
+  Model B mean top-1 was 76.2555%, compared with 76.1565% for hidden size 64.
 
-## Resume instructions
+## Final results
 
-Everything the run needs lives under `backend/`:
+Offline results use seeds 911-915 and paired bootstrap intervals over held-out query
+executions.
 
-- Frozen inputs: `runs/experiment-latest/`, `runs/diagnostic-audit-001/` — see `FROZEN_MANIFEST.json`.
-- Pre-registration: `FINAL_EVALUATION_PROTOCOL_V2.md` (append-only amendments).
-- Decisions: `DECISIONS.md`.
-- Task 1 controls (already done): `runs/task1-controls/`, `TASK1_FINDINGS.md`.
-- Run the suite: `cd backend && python -m pytest -q`.
+| Hypothesis | Outcome | Main evidence |
+|---|---|---|
+| H1 | Supported | Model B minus Model A: +12.4206 points, 95% CI [10.2872, 14.6252] |
+| H2 | Not supported | Model B minus Markov-2: -17.6943 points, 95% CI [-20.8634, -14.6458] |
+| H3 | Not supported | Oracle minus none: +59.5928 ms/query, 95% CI [42.7457, 78.3429] |
+| H4 | Not supported | No neural runtime comparison was opened after the oracle failed the headroom gate |
+| H5 | Not supported | Offline template H1 passed, but the required runtime H3 did not |
 
-To resume after interruption: read this file, `DECISIONS.md`, then continue from the
-first NOT STARTED / IN PROGRESS milestone. Do not repeat completed work.
+The final runtime confirmation contains five matched seeds and 500 paired queries per
+comparison. Median total query time was 11,229.8127 ms for `none`, 12,020.6914 ms for
+`null`, and 16,650.5128 ms for `oracle_miss`. The future-aware oracle improved 1.4% of
+queries. These are latency-injected shared-device results, not physical-device claims.
 
-## Current blockers / open questions
+## Artifacts
 
-- No git repository is present, so milestone commits are skipped (see DECISIONS D1).
-- The runtime pipeline (deep async queue) is the known bottleneck; M3/M4 decide
-  whether any configuration has real headroom before runtime work (M5-M7) proceeds.
+- Offline: `runs/large-branch-20261015/final-offline/offline_accuracy.json`
+- Runtime: `runs/large-branch-20261015/final-runtime-no-headroom/suite_summary.json`
+- Hypotheses: `runs/large-branch-20261015/final-report/final_hypotheses.json`
+- Human-readable report: `runs/large-branch-20261015/final-report/research_report.md`
+- Dashboard snapshot: `../public/pagewise-dashboard.json`
 
-## Log
+## Boundaries
 
-- (M0) Hashed 1338 files under the frozen directories into `FROZEN_MANIFEST.json`.
-- (M0) Wrote `FINAL_EVALUATION_PROTOCOL_V2.md`, `PROGRESS.md`, `DECISIONS.md`; baseline 41 tests.
-- (M1) Root cause: oracle prefetched already-cached trace pages, and single-threaded
-  prefetch I/O could never stay ahead. Fixed with `oracle_miss` (next K would-be-miss
-  pages from a `none` reference) and a `--prefetch-workers` pool. Sanity (a)(b)(c) pass
-  under the independent model; shared still loses (device saturation). 46 tests pass.
-- (M2) Added `pagewise/offline.py` (param-bucket + template splits, `markov_ctx`,
-  `model_b_table`, paired bootstrap, H1/H2/H5-offline). Ran 5 seeds x 2 splits on the
-  frozen trace: H1 supported, H2 not supported, H5-offline inconclusive. Outputs in
-  `runs/m2-offline/`. See `FINAL_SUMMARY.md`.
-- (M2) Finished the interrupted ablation: object identity alone is worth 30.7 of 33.5
-  top-1 points; removing page metadata costs 10.15 points. Wrote accuracy + ablation
-  charts and 7 new tests (suite now 53 passing).
+- VFS reads can be served by the operating-system cache and are not proof of physical I/O.
+- Injected delays are measured host timer delays, not NVMe, SATA, or HDD measurements.
+- The oracle is a future-aware experimental control, not a universal mathematical upper
+  bound for every possible prefetch implementation.
+- Simulator validation missed the 15% target for 2 of 10 declared cells.
