@@ -541,3 +541,34 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
 }
+
+.neural-study { display: grid; gap: 22px; }
+.neural-intro h1 { font-size: clamp(25px, 3vw, 36px); margin: 8px 0 12px; letter-spacing: -1px; }
+.neural-intro > p:not(.eyebrow) { max-width: 780px; color: #69758a; line-height: 1.7; }
+.neural-meta { display: flex; flex-wrap: wrap; gap: 10px 24px; margin-top: 18px; color: #657386; font-size: 12px; }
+.neural-tabs { display: flex; gap: 8px; }
+.neural-tabs button { border: 1px solid #dce3e8; background: white; border-radius: 6px; padding: 10px 16px; cursor: pointer; color: #566376; font-size: 13px; }
+.neural-tabs button[aria-pressed="true"] { background: #eaf4ef; border-color: #77a48e; color: #275b43; }
+.neural-cards { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.neural-cards article { padding: 22px; }
+.neural-cards strong { display: block; font-size: 33px; margin: 12px 0; letter-spacing: -1px; }
+.neural-cards strong small { font-size: 15px; color: #7b8797; letter-spacing: 0; }
+.neural-cards article > p:last-child { color: #728094; font-size: 12px; overflow-wrap: anywhere; }
+.neural-panel { padding: 24px; min-width: 0; }
+.neural-panel h2 { font-size: 19px; margin: 9px 0 13px; letter-spacing: -.4px; }
+.neural-panel p, .neural-panel li { color: #637185; font-size: 13px; line-height: 1.8; }
+.neural-panel ul { padding-left: 19px; margin: 16px 0; }
+.neural-table-wrap { overflow-x: auto; margin-top: 20px; }
+.neural-study table { border-collapse: collapse; width: 100%; font-size: 12px; white-space: nowrap; }
+.neural-study th, .neural-study td { padding: 13px 12px; border-bottom: 1px solid #e9edf0; text-align: right; }
+.neural-study th:first-child { text-align: left; }
+.neural-study thead th { font-weight: 500; color: #7b8797; background: #f8fafb; font-size: 11px; }
+.neural-study tbody th { font-weight: 500; }
+.neural-selected { background: #edf5f0; color: #24593d; }
+.neural-note { margin-top: 18px; padding-left: 13px; border-left: 2px solid #b6cfc1; }
+.neural-empty { padding: 28px; }
+@media (max-width: 760px) {
+  .neural-cards { grid-template-columns: 1fr; }
+  .neural-cards article { padding: 17px; }
+  .neural-panel { padding: 16px; }
+}

@@ -66,6 +66,8 @@ npm run dev
 
 The React dashboard loads the measured backend snapshot in `public/pagewise-dashboard.json` when present, including offline predictor metrics, final runtime suites, latency series, and trace samples. Browser-only replay and calculator controls remain illustrative and must not be cited as measured results. For raw generated artifacts, the optional Streamlit measured-results viewer is documented in `backend/README.md`.
 
+The **Neural improvement** tab (`/?view=neural`) displays the separate fresh study from `public/pagewise-neural-improvement.json`: matched prediction controls, paired uncertainty, runtime latency and prefetch efficiency. See [the study roadmap](backend/NEURAL_IMPROVEMENT_PLAN.md) and [measured results](backend/NEURAL_IMPROVEMENT_RESULTS.md). Its JSON export downloads those measured results. Local frozen checkpoints and raw traces are ignored research artifacts; the original research snapshot remains separate.
+
 ## Testing
 
 ```powershell

@@ -58,6 +58,7 @@ def build_sequences(trace_path: str | Path, page_map_path: str | Path, output_pa
             "template_id": first.get("template_id") or "unknown",
             "workload_family": first.get("workload_family") or "unknown",
             "plan_class": first.get("plan_class") or "unknown",
+            "params": first.get("params"),
             "pages": [int(event["page"]) for event in events],
             "event_count": len(events),
             "page_metadata": {str(page): page_map.get(page, {"page": page, "object": "unknown", "page_type": "unknown", "depth": 0}) for page in set(int(e["page"]) for e in events)},

@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
+import NeuralStudy from "./NeuralStudy";
 
-type View = "overview" | "traces" | "comparison" | "method";
+type View = "overview" | "traces" | "comparison" | "method" | "neural";
 type WorkloadId = "point" | "join" | "traversal" | "range" | "mixed";
 type ModeId = "nvme" | "sata" | "hdd";
 type PolicyId = "stock" | "sequential" | "markov" | "modelA" | "modelB" | "oracle";
@@ -1129,7 +1130,7 @@ function MethodPage({
 }
 
 function App() {
-  const [view, setView] = useState<View>("overview");
+  const [view, setView] = useState<View>(() => new URLSearchParams(window.location.search).get("view") === "neural" ? "neural" : "overview");
   const [dashboardSnapshot, setDashboardSnapshot] = useState<DashboardSnapshot | null>(null);
   const [workloadId, setWorkloadId] = useState<WorkloadId>("mixed");
   const [modeId, setModeId] = useState<ModeId>("sata");
@@ -1195,6 +1196,12 @@ function App() {
     downloadFile("pagewise-fixture-results.csv", header + rows.join("\n"), "text/csv");
   }
 
+  async function exportNeuralStudy() {
+    const response = await fetch("/pagewise-neural-improvement.json", { cache: "no-store" });
+    if (!response.ok) return;
+    downloadFile("pagewise-neural-improvement.json", JSON.stringify(await response.json(), null, 2), "application/json");
+  }
+
   function exportTrace() {
     const header = "time,query_id,workload,page,previous_page,object,page_type,depth,plan_node,cache,predicted_page,confidence,prefetched,useful\n";
     const rows = TRACE_EVENTS.map((event) => [event.time, event.queryId, event.workload, event.page, event.previousPage, event.object, event.pageType, event.depth, `"${event.plan.replace(/"/g, '""')}"`, event.cache, event.predictedPage, event.confidence, event.prefetched, event.useful].join(","));
@@ -1222,6 +1229,7 @@ function App() {
     traces: "Trace explorer",
     comparison: "Model comparison",
     method: "Method & scope",
+    neural: "Neural improvement",
   };
 
   return (
@@ -1237,6 +1245,7 @@ function App() {
             ["overview", "Overview", "overview"],
             ["traces", "Trace explorer", "trace"],
             ["comparison", "Model comparison", "compare"],
+            ["neural", "Neural improvement", "compare"],
             ["method", "Method & scope", "method"],
           ] as [View, string, string][]).map(([id, label, icon]) => (
             <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}>
@@ -1249,7 +1258,7 @@ function App() {
             <span className="project-icon"><Icon name="database" size={16} /></span>
             <div><small>ACTIVE PROJECT</small><strong>page-prefetch / v0.1</strong></div>
           </div>
-          <div className="sidebar-status"><span className="status-pulse" /><div><strong>DEMO BUILD</strong><small>local fixture data</small></div><span className="status-code">DEV</span></div>
+          <div className="sidebar-status"><span className="status-pulse" /><div><strong>{view === "neural" ? "MEASURED STUDY" : "DEMO BUILD"}</strong><small>{view === "neural" ? "frozen confirmation" : "local fixture data"}</small></div><span className="status-code">DEV</span></div>
           <div className="sidebar-meta">RESEARCH PROTOTYPE <span>V0.1</span></div>
         </div>
       </aside>
@@ -1259,13 +1268,14 @@ function App() {
           <div className="breadcrumbs"><span>Pagewise</span><i>/</i><strong>{pageLabels[view]}</strong></div>
           <div className="topbar-actions">
             {hasRun && <span className="last-run">Replay {String(runCount).padStart(2, "0")} <i /> {lastRun}</span>}
-            <span className={`topbar-fixture ${dashboardSnapshot ? "topbar-measured" : ""}`}><span /> {dashboardSnapshot ? "MEASURED JSON" : "FIXTURE DATA"}</span>
-            <button className="export-button" onClick={view === "traces" ? exportTrace : view === "method" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "method" ? "Export config" : view === "traces" ? "Export trace" : "Export results"}</span></button>
+            <span className={`topbar-fixture ${dashboardSnapshot || view === "neural" ? "topbar-measured" : ""}`}><span /> {dashboardSnapshot || view === "neural" ? "MEASURED JSON" : "FIXTURE DATA"}</span>
+            <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "method" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Export study JSON" : view === "method" ? "Export config" : view === "traces" ? "Export trace" : "Export results"}</span></button>
           </div>
         </header>
 
         <div className="content-area" key={view}>
-          <DemoNotice onOpenMethod={() => setView("method")} snapshot={dashboardSnapshot} />
+          {view !== "neural" && <DemoNotice onOpenMethod={() => setView("method")} snapshot={dashboardSnapshot} />}
+          {view === "neural" && <NeuralStudy />}
           {view === "overview" && <>
             <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="A controlled replay console for testing whether query-plan context improves page-level prefetching, and whether inference cost erases the gain." trailing={<span className="intro-count">01 <small>research question</small></span>} />
             <MeasuredBackendPanel snapshot={dashboardSnapshot} />
@@ -1292,7 +1302,7 @@ function App() {
           {view === "traces" && <TraceExplorer workloadFilter={traceWorkload} setWorkloadFilter={setTraceWorkload} search={traceSearch} setSearch={setTraceSearch} onlyWasted={traceOnlyWasted} setOnlyWasted={setTraceOnlyWasted} selectedId={selectedTraceId} setSelectedId={setSelectedTraceId} snapshot={dashboardSnapshot} />}
           {view === "comparison" && <ComparisonPage workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} setActivePolicy={setActivePolicy} inferenceCost={inferenceCost} setInferenceCost={setInferenceCost} snapshot={dashboardSnapshot} />}
           {view === "method" && <MethodPage onExportConfig={exportConfig} />}
-          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE-PREFETCH LAB</span><span>Fixture prototype / no performance claims</span><button onClick={() => setView("method")}>Scope & methodology</button></footer>
+          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE-PREFETCH LAB</span><span>{view === "neural" ? "Measured confirmation / tested conditions only" : "Fixture prototype / no performance claims"}</span><button onClick={() => setView("method")}>Scope & methodology</button></footer>
         </div>
       </main>
     </div>

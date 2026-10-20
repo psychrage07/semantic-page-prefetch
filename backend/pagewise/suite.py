@@ -11,7 +11,7 @@ import numpy as np
 
 from .runner import trace_workload
 
-VALID_STRATEGIES = ("stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "null", "oracle_next", "oracle_miss", "oracle_optimal")
+VALID_STRATEGIES = ("stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "model_ranker", "null", "oracle_next", "oracle_miss")
 
 
 def recover_suite(output_dir: str | Path) -> dict[str, Any]:
@@ -111,11 +111,10 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                            cache_kib=cache_kib, mixed=True)
             oracle_trace_path = str(reference / "trace.jsonl")
         oracle_miss_path = None
-        if "oracle_miss" in strategies or "oracle_optimal" in strategies:
+        if "oracle_miss" in strategies:
             # A no-prefetch run with the same cache records, per query, the ordered
             # demand page stream and which pages missed. Delay is irrelevant to which
             # pages are demanded, so the reference runs with no injected delay.
-            # oracle_optimal consumes the same declared reference-cache replay.
             reference = out / "oracle-miss-reference" / f"seed-{seed}"
             ref_cfg = {
                 "strategy": "none", "candidate_index_path": str(model_dir / "candidate_index.json"),
@@ -138,11 +137,11 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
             run_path = out / f"trial-{repeat_idx + 1:02d}" / f"seed-{seed}" / strategy
             cfg = None
             if strategy != "stock":
-                model_file = model_dir / ("model_a.pt" if strategy == "model_a" else "model_b.pt" if strategy in {"model_b", "hybrid"} else "")
+                model_file = model_dir / ("model_ranker.pt" if strategy == "model_ranker" else "model_a.pt" if strategy == "model_a" else "model_b.pt" if strategy in {"model_b", "hybrid"} else "")
                 cfg = {
                     "strategy": strategy,
                     "candidate_index_path": str(model_dir / "candidate_index.json"),
-                    "model_path": str(model_file) if strategy in {"model_a", "model_b", "hybrid"} else None,
+                    "model_path": str(model_file) if strategy in {"model_a", "model_b", "hybrid", "model_ranker"} else None,
                     "semantic": strategy in {"model_b", "hybrid"},
                     "cache_pages": cache_pages,
                     "degree": degree,
@@ -157,7 +156,7 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                     "drop_stale_jobs": drop_stale_jobs,
                     "diagnostics_enabled": diagnostics_enabled,
                     "oracle_trace_path": oracle_trace_path if strategy in {"oracle", "oracle_next"} else None,
-                    "oracle_miss_path": oracle_miss_path if strategy in {"oracle_miss", "oracle_optimal"} else None,
+                    "oracle_miss_path": oracle_miss_path if strategy in {"oracle_miss"} else None,
                     "prefetch_workers": int(prefetch_workers),
                 }
             result = trace_workload(database_path, run_path, query_count=queries, seed=seed,

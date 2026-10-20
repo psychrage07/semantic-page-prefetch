@@ -186,11 +186,10 @@ def _predict(history: list[int], context: dict[str, Any], key: tuple, index: Can
             continue
         ctx = dict(context)
         if variant == "b3":
-            params = context.get("params")
-            ctx = {**ctx, "param_bucket": ML.param_bucket(params), "param_available": True}
+            ctx.update(ML.prediction_context(context))
         logits = ML.candidate_logits(model, history, candidates, ctx, page_map, variant,
                                      trained.get("variants_counts", {}).get(
-                                         variant, trained.get("counts")))
+                                         variant, trained.get("counts")), max_page=index.max_page)
         order = sorted(zip(list(candidates), [float(v) for v in logits]),
                        key=lambda pair: pair[1], reverse=True)
         out[name] = [p for p, _ in order]
@@ -289,107 +288,77 @@ def _build_ctx_tables_v21(train: list, index: CandidateIndex, page_map: dict[str
 
 
 def evaluate_split_v21(test: list, trained: dict[str, Any], page_map: dict[str, Any],
-                       markov_ctx: dict, *, top_k: int = 8, temperature: dict | None = None) -> dict[str, Any]:
-    """v2.1 per-execution evaluation with the declared metric set.
+                       markov_ctx: dict, *, top_k: int = 8, temperature: dict | None = None,
+                       workload_cases: dict | None = None) -> dict[str, Any]:
+    """Observed-transition metrics; actual timely coverage requires a timed replay.
 
-    Identical train/validation/test executions, identical candidate generation
-    (the single ``CandidateIndex`` passed via ``trained["index"]``) and
-    identical tuning budgets apply to every policy. Reported separately:
-    candidate-generation recall, native candidate coverage per generator,
-    ranked Top-1/Top-5, timely coverage (1-step-lagged Top-K at reference-cache
-    misses), and inference microseconds per prediction.
+    Top-1 is available both per execution (macro) and per transition (micro).
+    Reference-cache miss opportunity is not labeled as measured timely arrival.
+    Calibration is explicitly conditional on target inclusion in the candidates.
     """
-    import time as _time
-    from .models import HISTORY_LENGTH as HL
+    import time
     index = trained["index"]
-    inference_us: dict[str, list[float]] = defaultdict(list)
-    per_exec: dict[str, dict[str, list[bool]]] = {}
-    top5_hits: dict[str, list[bool]] = defaultdict(list)
-    recall_hits: list[bool] = []
-    coverage: Counter = Counter()
-    timely_hits: dict[str, list[bool]] = defaultdict(list)
-    # calibration stream per neural policy (normalized candidate distributions)
-    calib: dict[str, tuple[list[float], list[int]]] = defaultdict(lambda: ([], []))
+    inference_us, top5_hits, opportunity = defaultdict(list), defaultdict(list), defaultdict(list)
+    per_exec, recalls_by_query, calibration = {}, {}, defaultdict(lambda: ([], []))
+    coverage = Counter()
+    replay = ML.reference_cache_miss_replay(test)
     for seq in test:
         pages = [int(p) for p in seq["pages"]]
         if len(pages) < 2:
             continue
-        case = {"template_id": seq.get("template_id"), "workload_family": seq.get("workload_family"),
-                "plan_class": seq.get("plan_class"), "params": seq.get("params")}
-        hits: dict[str, list[bool]] = defaultdict(list)
-        prev_topk: dict[str, list[int]] = {}
+        base = ML.prediction_context(seq, workload_cases)
+        hits, recalls, previous = defaultdict(list), [], {}
         for i in range(1, len(pages)):
-            history = pages[:i][-HL:]
-            target = pages[i]
-            context = {**case, "position_in_query": min(i, 512) / 512.0}
+            history, target = pages[:i][-HISTORY_LENGTH:], pages[i]
+            context = {**base, "position_in_query": min(i, 512) / 512.0}
             candidates = index.candidates(history)
-            recall_hits.append(bool(target in candidates))
-            # native candidate coverage per generator
-            coverage["semantic_generator"] += 1
-            m2 = list(index.second_order.get(f"{pages[i-2]}:{pages[i-1]}", []) if i >= 2 else [])
-            if not m2:
-                m2 = list(index.successors.get(pages[i - 1], []))
-            if m2:
-                coverage["markov2_generator"] += 1
-            key = _ctx_key(pages[i - 1], context, page_map)
-            if key in markov_ctx:
-                coverage["markov_ctx_generator"] += 1
-            t_start = _time.perf_counter_ns()
-            preds = _predict(history, context, key, index, trained, page_map,
-                             markov_ctx, model_b_table={}, top_k=top_k)
-            inference_us["table_policies"] = inference_us.get("table_policies", [])
+            recalls.append(target in candidates)
+            m1 = index.successors.get(history[-1], [])
+            m2 = index.second_order.get(f"{history[-2]}:{history[-1]}", []) if len(history) >= 2 else []
+            m2 = m2 or m1
+            ctx = markov_ctx.get(_ctx_key(history[-1], context, page_map))
+            preds = {"markov2": m2, "markov_ctx": [p for p, _ in ctx.most_common(top_k)] if ctx else m1}
+            coverage["markov2"] += bool(m2)
+            coverage["markov_ctx"] += bool(ctx)
+            coverage["semantic"] += bool(candidates)
+            for name, variant in (("model_a", "a"), ("model_b", "b"), ("model_b2", "b2"), ("model_b3", "b3")):
+                started = time.perf_counter_ns()
+                logits = ML.candidate_logits(trained[name], history, candidates, context, page_map, variant,
+                                             trained.get("variants_counts", {}).get(variant, trained.get("counts")),
+                                             max_page=index.max_page)
+                inference_us[name].append((time.perf_counter_ns() - started) / 1000.0)
+                order = np.argsort(-logits, kind="stable")
+                preds[name] = [candidates[j] for j in order]
+                if target in candidates:
+                    probs = ML.softmax_normalize(logits, (temperature or {}).get(name, 1.0))
+                    pl, gl = calibration[name]
+                    pl.append(probs.tolist()); gl.append(candidates.index(target))
             for policy in V21_POLICIES:
-                ranked = preds.get(policy) or []
+                ranked = preds[policy]
                 hits[policy].append(bool(ranked and ranked[0] == target))
-                top5_hits[policy].append(bool(ranked and target in list(ranked)[:5]))
-                # timely coverage: a miss that the PREVIOUS position's Top-K
-                # (the degree-K slots the runtime would actually prefetch)
-                # already covered before this demand.
-                if prev_topk.get(policy) is not None:
-                    timely_hits[policy].append(target in prev_topk[policy][:top_k])
-                prev_topk[policy] = list(ranked)[:top_k]
-            _time_us = (_time.perf_counter_ns() - t_start) / max(1, 1000.0)
-            inference_us["table_policies"].append(_time_us * 1000.0)
-            # neural inference cost separately-timed with real model calls
-            for policy in ("model_a", "model_b"):
-                candidates_ = index.candidates(history)
-                ctx = {**case, "position_in_query": min(i, 512) / 512.0}
-                t_n = _time.perf_counter_ns()
-                score_candidates(trained[policy], history, candidates_, ctx, page_map,
-                                 index.max_page, semantic=(policy == "model_b"))
-                inference_us[policy].append((_time.perf_counter_ns() - t_n) / 1000.0)
-            for policy in ("model_b2", "model_b3"):
-                candidates_ = index.candidates(history)
-                ctx = {**case, "position_in_query": min(i, 512) / 512.0}
-                if policy == "model_b3":
-                    ctx = {**ctx, "param_bucket": ML.param_bucket(seq.get("params")), "param_available": True}
-                t_n = _time.perf_counter_ns()
-                logits = ML.candidate_logits(trained[policy], history, candidates_, ctx,
-                                             page_map, "b2" if policy == "model_b2" else "b3",
-                                             trained["counts"])
-                inference_us[policy].append((_time.perf_counter_ns() - t_n) / 1000.0)
-                probs = ML.softmax_normalize(logits, temperature=(temperature or {}).get(policy, 1.0))
-                if len(probs) >= 2 and target in candidates_:
-                    pl, cl = calib[policy]
-                    pl.append([float(x) for x in probs])
-                    cl.append(candidates_.index(target))
-        per_exec[str(seq.get("query_id"))] = dict(hits)
-    calib_report = {}
-    for policy, (probs, golds) in calib.items():
-        calib_report[policy] = ML.expected_calibration_error(probs, golds)
+                top5_hits[policy].append(target in ranked[:5])
+                if replay[str(seq.get("query_id"))][i] and i >= 2:
+                    opportunity[policy].append(target in previous.get(policy, []))
+                previous[policy] = ranked[:top_k]
+        qid = str(seq.get("query_id"))
+        per_exec[qid], recalls_by_query[qid] = dict(hits), recalls
+    recall_flat = [x for xs in recalls_by_query.values() for x in xs]
+    n = len(recall_flat)
+    conditional = {}
+    for policy in V21_POLICIES:
+        correct = sum(sum(h[policy]) for h in per_exec.values())
+        conditional[policy] = round(100.0 * correct / max(1, sum(recall_flat)), 4) if policy.startswith("model_") else None
     return {
-        "per_exec": per_exec,
-        "candidate_recall_pct": round(100.0 * sum(recall_hits) / max(1, len(recall_hits)), 4),
-        "native_coverage_pct": {
-            "markov2": round(100.0 * coverage["markov2_generator"] / max(1, coverage["semantic_generator"]), 4),
-            "markov_ctx": round(100.0 * coverage["markov_ctx_generator"] / max(1, coverage["semantic_generator"]), 4),
-            "semantic": 100.0,
-        },
-        "top5_hit_count": {policy: sum(v) for policy, v in top5_hits.items()},
-        "top5_once": top5_hits,
-        "timely_once": timely_hits,
-        "inference_us_per_prediction": {k: round(statistics.mean(v), 3) for k, v in inference_us.items() if v},
-        "calibration": calib_report,
+        "per_exec": per_exec, "candidate_inclusion_by_query": recalls_by_query,
+        "candidate_recall_pct": round(100.0 * sum(recall_flat) / max(1, n), 4),
+        "conditional_top1_pct": conditional,
+        "transition_top1_pct": {p: round(100.0 * sum(sum(h[p]) for h in per_exec.values()) / max(1, n), 4) for p in V21_POLICIES},
+        "native_coverage_pct": {k: round(100.0 * coverage[k] / max(1, n), 4) for k in ("markov2", "markov_ctx", "semantic")},
+        "top5_hit_count": {p: sum(v) for p, v in top5_hits.items()}, "top5_once": dict(top5_hits),
+        "timely_once": {}, "one_step_lead_miss_opportunity": dict(opportunity),
+        "inference_us_per_prediction": {p: round(statistics.mean(v), 3) for p, v in inference_us.items()},
+        "calibration": {p: ML.expected_calibration_error(*v) for p, v in calibration.items()},
+        "metric_note": "Top-1 macro averages query accuracies; transition metrics count all eligible next-read transitions. Timely coverage requires timed runtime/simulation. Calibration is conditional on candidate inclusion.",
     }
 
 
@@ -449,14 +418,14 @@ def run_offline_study_v21(sequences_path: str | Path, workload_path: str | Path,
                 "variants_counts": variant_counts,
             }
             evaluation = evaluate_split_v21(test, trained, page_map, ctx_tables, top_k=top_k,
-                                            temperature=temps)
+                                            temperature=temps, workload_cases=cases)
             for query_id, hits in evaluation["per_exec"].items():
                 for family_label, cand, base in V21_FAMILY:
                     cand_hits = hits.get(cand, []); base_hits = hits.get(base, [])
                     if len(cand_hits) == len(base_hits) and cand_hits:
                         sessions.setdefault((split_kind, cand, base), {"sessions": {}})
-                        unit = sessions[(split_kind, cand, base)]["sessions"].setdefault(seed, [])
-                        unit.extend([100.0 * (c - b) / max(1, len(cand_hits)) for c, b in zip(cand_hits, base_hits)])
+                        unit = sessions[(split_kind, cand, base)]["sessions"].setdefault(query_id, [])
+                        unit.append(100.0 * (statistics.mean(cand_hits) - statistics.mean(base_hits)))
             # aggregate top-1 row per policy
             for policy in V21_POLICIES:
                 accs = _exec_accuracy(evaluation["per_exec"], policy)
@@ -466,7 +435,9 @@ def run_offline_study_v21(sequences_path: str | Path, workload_path: str | Path,
                     "split": split_kind, "seed": seed, "policy": policy,
                     "top1_accuracy_pct": round(statistics.mean(accs.values()), 4) if accs else None,
                     "top5_accuracy_pct": round(100.0 * sum(top5s) / max(1, len(top5s)), 4) if top5s else None,
-                    "timely_coverage_pct": round(100.0 * sum(timely) / max(1, len(timely)), 4) if timely else None,
+                    "timely_coverage_pct": None,
+                    "transition_top1_accuracy_pct": evaluation["transition_top1_pct"][policy],
+                    "conditional_top1_accuracy_pct": evaluation["conditional_top1_pct"][policy],
                     "inference_us_per_prediction": evaluation["inference_us_per_prediction"].get(policy),
                     "calibration": evaluation["calibration"].get(policy),
                     "executions": len(evaluation["per_exec"]),
@@ -480,18 +451,19 @@ def run_offline_study_v21(sequences_path: str | Path, workload_path: str | Path,
     family_reports: dict[str, Any] = {}
     for split_kind in ("params", "templates"):
         members = []
-        for cand, base in {(c, b) for _, c, b in V21_FAMILY}:
+        for _, cand, base in V21_FAMILY:
             key = (split_kind, cand, base)
             if key in sessions:
-                members.append((f"{cand}_vs_{base}", sessions[key]["sessions"]))
+                members.append((f"{cand}_vs_{base}", {qid: [statistics.mean(deltas)] for qid, deltas in sessions[key]["sessions"].items()}))
         if members:
-            family_reports[split_kind] = declare_family(members, iterations=5000)
+            family_reports[split_kind] = declare_family(members, iterations=5000, replication_unit="query execution after averaging model initializations; conditional on the traced workload")
     report = {
         "schema_version": "v2.1",
         "seeds": seeds, "epochs": epochs, "hidden": hidden, "top_k": top_k,
         "candidate_count": max_candidates,
         "rows": rows,
         "family_reports": family_reports,
+        "replication_note": "Query executions are bootstrap clusters after averaging model initializations. Model seeds are not independent workload seeds; inference is conditional on this traced workload.",
         "fairness_note": ("Identical train/val/test executions, candidate generation, and "
                           "tuning budgets across model_a, model_b (preserved), model_b2, and "
                           "model_b3; transition counts and candidate indexes from training "
@@ -505,7 +477,7 @@ def run_offline_study_v21(sequences_path: str | Path, workload_path: str | Path,
         flat_rows.append(base)
     if flat_rows:
         with (out / "offline_study_v21.csv").open("w", newline="", encoding="utf-8") as handle:
-            writer = _csv.DictWriter.handle if False else _csv.DictWriter(handle, fieldnames=sorted({k for r in flat_rows for k in r}))
+            writer = _csv.DictWriter(handle, fieldnames=sorted({k for r in flat_rows for k in r}))
             writer.writeheader()
             for row in flat_rows:
                 writer.writerow(row)

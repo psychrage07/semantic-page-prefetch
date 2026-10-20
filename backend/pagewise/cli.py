@@ -97,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     prefetch.add_argument("--db", required=True)
     prefetch.add_argument("--model-dir", required=True, help="Directory containing candidate_index.json and model_a.pt/model_b.pt")
     prefetch.add_argument("--model-path", default=None, help="Optional explicit model checkpoint for model_a/model_b strategies, e.g. a retrained ablation checkpoint")
-    prefetch.add_argument("--strategy", choices=["none", "null", "oracle", "oracle_next", "oracle_miss", "oracle_optimal", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"], default="model_b")
+    prefetch.add_argument("--strategy", choices=["none", "null", "oracle", "oracle_next", "oracle_miss", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "model_ranker"], default="model_b")
     prefetch.add_argument("--out", required=True)
     prefetch.add_argument("--queries", type=int, default=250)
     prefetch.add_argument("--seed", type=int, default=9876)
@@ -162,7 +162,7 @@ def main(argv: list[str] | None = None) -> int:
     runtime_sweep.add_argument("--queries", type=int, default=150)
     runtime_sweep.add_argument("--seeds", default="101,202")
     runtime_sweep.add_argument("--strategies", default="none,model_a,model_b")
-    runtime_sweep.add_argument("--baseline", choices=["stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"], default="none")
+    runtime_sweep.add_argument("--baseline", choices=["stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "model_ranker"], default="none")
     runtime_sweep.add_argument("--cache-kib", type=int, default=4096)
     runtime_sweep.add_argument("--cache-pages", default="128,256", help="Comma-separated custom-cache page capacities")
     runtime_sweep.add_argument("--degrees", default="1,2", help="Comma-separated prefetch degrees")
@@ -251,6 +251,7 @@ def main(argv: list[str] | None = None) -> int:
     simdiag = sub.add_parser("sim-validate-cells",
                              help="v2.1 simulator validation cell diagnosis (15%% target; decomposes error causes)")
     simdiag.add_argument("--calibration", required=True)
+    simdiag.add_argument("--ledger", default=None)
     simdiag.add_argument("--runs", required=True, nargs="+", help="Run directories (real runtime runs) used as validation targets")
     simdiag.add_argument("--out", required=True)
 
@@ -301,12 +302,12 @@ def main(argv: list[str] | None = None) -> int:
                                              semantic_ablations=_parse_ablation_specs(args.semantic_ablations)))
         elif args.command == "run-prefetch":
             model_dir = Path(args.model_dir).resolve()
-            default_model = model_dir / ("model_b.pt" if args.strategy in {"model_b", "hybrid"} else "model_a.pt" if args.strategy == "model_a" else "")
+            default_model = model_dir / ("model_ranker.pt" if args.strategy == "model_ranker" else "model_b.pt" if args.strategy in {"model_b", "hybrid"} else "model_a.pt" if args.strategy == "model_a" else "")
             model_file = Path(args.model_path).resolve() if args.model_path else default_model
             config = {
                 "strategy": args.strategy,
                 "candidate_index_path": str(model_dir / "candidate_index.json"),
-                "model_path": str(model_file) if args.strategy in {"model_a", "model_b", "hybrid"} else None,
+                "model_path": str(model_file) if args.strategy in {"model_a", "model_b", "hybrid", "model_ranker"} else None,
                 "semantic": args.strategy in {"model_b", "hybrid"},
                 "cache_pages": args.cache_pages,
                 "degree": args.degree,

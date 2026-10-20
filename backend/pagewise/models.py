@@ -5,6 +5,7 @@ import json
 import math
 import random
 import shutil
+from functools import lru_cache
 from collections import Counter, defaultdict
 from dataclasses import dataclass
 from pathlib import Path
@@ -37,6 +38,7 @@ SEMANTIC_ABLATION_ALIASES = {
 }
 
 
+@lru_cache(maxsize=16_384)
 def stable_bucket(value: str, buckets: int) -> int:
     digest = hashlib.blake2b(value.encode("utf-8"), digest_size=8).digest()
     return int.from_bytes(digest, "little") % buckets
@@ -127,9 +129,18 @@ class CandidateIndex:
     max_page: int
     max_candidates: int = 32
     page_map_sha256: str = ""
+    strategy: str = "legacy"
+    layout_database_path: str = ""
+    static_metadata_path: str = ""
 
     @classmethod
-    def build(cls, sequences: list[dict[str, Any]], max_candidates: int = 32) -> "CandidateIndex":
+    def build(cls, sequences: list[dict[str, Any]], max_candidates: int = 32,
+              strategy: str = "legacy", page_map: dict | None = None,
+              layout_database_path: str = "") -> "CandidateIndex":
+        if strategy not in {"legacy", "markov2_first", "balanced", "layout"}:
+            raise ValueError(f"Unknown candidate strategy: {strategy}")
+        if max_candidates < 1:
+            raise ValueError("max_candidates must be positive")
         successors: dict[int, Counter[int]] = defaultdict(Counter)
         second: dict[str, Counter[int]] = defaultdict(Counter)
         popular: Counter[int] = Counter()
@@ -144,15 +155,35 @@ class CandidateIndex:
                 successors[a][b] += 1
                 if i >= 1:
                     second[f"{pages[i-1]}:{a}"][b] += 1
+        if strategy == "layout" and not layout_database_path:
+            raise ValueError("Layout candidates require the static database snapshot, not trace-filtered metadata")
         return cls(
             successors={k: [p for p, _ in v.most_common(max_candidates)] for k, v in successors.items()},
             second_order={k: [p for p, _ in v.most_common(max_candidates)] for k, v in second.items()},
             popular=[p for p, _ in popular.most_common(max_candidates)],
             max_page=max_page,
             max_candidates=max_candidates,
+            strategy=strategy,
+            layout_database_path=str(layout_database_path),
         )
 
-    def candidates(self, history: list[int]) -> list[int]:
+    def candidates(self, history: list[int], *, layout_children: list[int] | None = None) -> list[int]:
+        if self.strategy != "legacy" and history:
+            first = self.successors.get(history[-1], [])
+            second = self.second_order.get(f"{history[-2]}:{history[-1]}", []) if len(history) >= 2 else []
+            sequential = [history[-1] + 1] if history[-1] < self.max_page else []
+            streams = [second, first, sequential, self.popular]
+            if self.strategy == "layout":
+                from .layout import children
+                child_pages = list(children(self.layout_database_path, history[-1])) if layout_children is None else layout_children
+                streams = [second, child_pages, first, sequential, self.popular]
+            if self.strategy == "balanced":
+                # Round-robin reserves space for each proposal source.
+                ordered = [stream[i] for i in range(self.max_candidates)
+                           for stream in streams if i < len(stream)]
+            else:
+                ordered = [p for stream in streams for p in stream]
+            return list(dict.fromkeys(ordered))[:self.max_candidates]
         if not history:
             base = list(self.popular)
         else:
@@ -180,6 +211,9 @@ class CandidateIndex:
             "max_page": self.max_page,
             "max_candidates": self.max_candidates,
             "page_map_sha256": self.page_map_sha256,
+            "strategy": self.strategy,
+            "layout_database_path": self.layout_database_path,
+            "static_metadata_path": self.static_metadata_path,
             "note": "Candidates are generated from training sequences only; pages absent from the candidate set cannot be predicted.",
         }
 
@@ -191,6 +225,9 @@ class CandidateIndex:
             popular=[int(p) for p in value["popular"]],
             max_page=int(value["max_page"]), max_candidates=int(value.get("max_candidates", 32)),
             page_map_sha256=str(value.get("page_map_sha256", "")),
+            strategy=str(value.get("strategy", "legacy")),
+            layout_database_path=str(value.get("layout_database_path", "")),
+            static_metadata_path=str(value.get("static_metadata_path", "")),
         )
 
 

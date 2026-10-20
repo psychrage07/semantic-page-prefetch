@@ -96,6 +96,23 @@ def reference_stats(reference: list[dict[str, Any]]) -> dict[str, int]:
     return {"queries": len(reference), "reads": reads, "would_be_misses": misses}
 
 
+def replay_no_prefetch(reference: list[dict[str, Any]], cache_pages: int) -> list[dict[str, Any]]:
+    """Recompute would-be misses for this cell, retaining the cache across queries."""
+    cache = OrderedDict()
+    resolved = []
+    for row in reference:
+        flags = []
+        for page in row["pages"]:
+            miss = page not in cache
+            flags.append(miss)
+            cache.pop(page, None)
+            cache[page] = None
+            if len(cache) > max(1, cache_pages):
+                cache.popitem(last=False)
+        resolved.append({**row, "misses": flags})
+    return resolved
+
+
 # --------------------------------------------------------------------------- tables
 
 def build_tables(reference: list[dict[str, Any]], *, train_fraction: float = 0.7,
@@ -340,6 +357,7 @@ def simulate(reference: list[dict[str, Any]], *, strategy: str, cache_pages: int
     if strategy == "oracle_optimal":
         kind, resolved_channels = parse_storage_model(storage_model, storage_channels)
         return simulate_oracle_optimal(reference, cache_pages=cache_pages, degree=degree,
+                                       workers=workers, queue_size=queue_size, drop_stale_jobs=drop_stale_jobs,
                                        delay_ms=delay_ms, delay_prefetch_ms=delay_prefetch_ms,
                                        storage_model=storage_model, storage_channels=resolved_channels,
                                        costs=costs)
@@ -681,61 +699,12 @@ def simulate_oracle_optimal(reference: list[dict[str, Any]], *, cache_pages: int
                             storage_model: str = "shared", storage_channels: int | None = None,
                             costs: Costs | None = None,
                             queue_size: int = 64, drop_stale_jobs: bool = True) -> SimResult:
-    """Simulator-constrained offline optimal policy (v2.1).
+    """Choose the lowest-cost action in {none, oracle_miss(degree=1..K)}.
 
-    This is NOT ``oracle_miss``. ``oracle_miss`` is a *diagnostic* future-aware
-    policy: it replays the would-be misses of the ``none`` run and remains
-    measurable, even when contention makes it slower than ``none``.
-
-    ``oracle_optimal`` is the declared offline optimal policy **under the exact
-    modeled constraints** of the simulator: one demand timeline, bounded LRU
-    capacity replaced with the Belady rule, prefetch workers with the same
-    decision/cache-put overheads, and the same k-channel storage resource.
-    Lookahead: the full future demand order (this is the permitted oracle
-    lookahead). Action space: it explicitly includes the *no-prefetch* action,
-    realized through the admission gate below.
-
-    Admission rule (implemented, tested by ``test_oracle_optimal.py``):
-      A future-miss page is prefetched iff ALL of:
-        1. it will actually miss under the oracle's own projected cache state;
-        2. its next demand in the *future order* is strictly closer than the
-           farthest resident page's next demand (Belady admission: never
-           displaces something more valuable);
-        3. issuing it cannot delay any already-scheduled demand read: the
-           prefetch completion (issue = max(decision epoch, worker free),
-           service on the modeled device) must end no later than the earliest
-           future demand read's *would-be* service start computed on the
-           prefetch-free timeline;
-        4. prefetch completion happens before that page's own demand.
-      Otherwise the oracle takes the no-prefetch action (skips prefetching).
-
-    Because conditions 1-4 remove a demand device hold without adding load
-    ahead of any demand read, the realized total cannot exceed the no-prefetch
-    baseline under identical simulator assumptions; the invariant is asserted
-    empirically by tests.
-
-    Declared definition (v2.1 amendment): oracle_optimal KNOWS the full future
-    demand order and optimizes over the declared closed ACTION FAMILY
-      A = { no-prefetch }  ∪  { prefetch-next-would-be-misses(K): K = 1..degree }
-    Both members are evaluated under the exact modeled constraints of this
-    simulator (same device kind/channels, same cache capacity, same worker
-    model, same CPU cost model); the policy takes the argmin and reports both
-    action costs. Because the no-prefetch action is in the action family and
-    is evaluated on the identical model, the invariant cost(oracle_optimal) <=
-    cost(none) holds by construction — asserted empirically by tests without
-    altering any measurement.
-
-    Optimality scope, honestly stated: the policy optimizes admission/degree
-    selection exactly *within* the declared family. A globally optimal joint
-    scheduling/admission/eviction policy (e.g., end-time-optimal interleaving
-    of demand and speculative I/O) is NP-hard and is NOT claimed. Belady-style
-    cache replacement is implemented and tested separately (``_BeladyCache``)
-    and is reported as a distinct cache-policy evaluation, not merged into this
-    scheduling optimization. Reported headroom from oracle_optimal is a
-    certified lower bound on achievable headroom under the modeled constraints,
-    which is sufficient to REOPEN a NO_HEADROOM decision when it exceeds the
-    declared 10% threshold; an upper bound would require an exhaustive schedule
-    search and is not claimed by this implementation.
+    Every action uses the same LRU cache, device, workers and costs. This is
+    exact only within this finite action family. It is not a global optimal
+    scheduler or an upper bound on possible prefetch benefit. Belady cache
+    replacement is a separate diagnostic, not used by this policy.
     """
     kind, channels = parse_storage_model(storage_model, storage_channels)
     channel_value = channels or 1
@@ -744,22 +713,20 @@ def simulate_oracle_optimal(reference: list[dict[str, Any]], *, cache_pages: int
     # same modeled constraints (none charges no enqueue/decision cost).
     base = simulate(reference, strategy="none", cache_pages=cache_pages, degree=degree,
                     workers=workers, delay_ms=delay_ms, delay_prefetch_ms=delay_prefetch_ms,
-                    storage_model=storage_model, costs=costs, storage_channels=channel_value)
+                    storage_model=storage_model, costs=costs, storage_channels=channel_value,
+                    queue_size=queue_size, drop_stale_jobs=drop_stale_jobs)
 
     # Action family member 2..K: prefetch the next K would-be misses (the
     # runtime-identical oracle_miss pipeline). K is optimized exactly.
-    resolved: list[dict[str, Any]] = []
-    for row in reference:
-        pages = row["pages"]
-        misses = row.get("misses") or [True] * len(pages)
-        resolved.append({"query_id": row["query_id"], "pages": pages, "misses": misses})
+    resolved = replay_no_prefetch(reference, cache_pages)
     pm_results: dict[int, SimResult] = {}
     for k in range(1, max(1, int(degree)) + 1):
         pm_results[k] = simulate(resolved, strategy="oracle_miss", cache_pages=cache_pages,
                                  degree=k, workers=workers, delay_ms=delay_ms,
                                  delay_prefetch_ms=delay_prefetch_ms,
                                  storage_model=storage_model, costs=costs,
-                                 storage_channels=channel_value)
+                                 storage_channels=channel_value, queue_size=queue_size,
+                                 drop_stale_jobs=drop_stale_jobs)
     best_k = min(pm_results, key=lambda k: pm_results[k].total_ms)
     pm = pm_results[best_k]
     chosen = "no_prefetch" if base.total_ms <= pm.total_ms else ("prefetch_next_misses_k", best_k)
@@ -783,8 +750,8 @@ def simulate_oracle_optimal(reference: list[dict[str, Any]], *, cache_pages: int
             "none_action_cost_ms": base.total_ms,
             "prefetch_action_cost_ms": pm.total_ms,
             "prefetch_action_degree": best_k,
-            "chosen_action": chosen[0] if isinstance(chosen, str) else chosen[0],
-            "chosen_degree": best_k if not isinstance(chosen, str) and chosen != "no_prefetch" else (best_k if chosen == "no_prefetch" else best_k),
+            "chosen_action": chosen if isinstance(chosen, str) else chosen[0],
+            "chosen_degree": 0 if chosen == "no_prefetch" else best_k,
             "headroom_vs_none_pct": round(100.0 * (base.total_ms - total) / base.total_ms, 4) if base.total_ms > 0 else 0.0,
         },
         "optimality_scope": ("exact within the declared action family; a globally optimal joint "

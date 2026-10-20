@@ -46,6 +46,8 @@ def run(args, *, tag: str, outputs: list[str] | None = None, extra_metrics: dict
 
 def main() -> int:
     STUDY.mkdir(parents=True, exist_ok=True)
+    import hashlib
+    manifest_sha_before = hashlib.sha256(MANIFEST.read_bytes()).hexdigest() if MANIFEST.exists() else None
     steps: list[dict] = []
     print(f"== v2.1 dev verification -> {STUDY}")
 
@@ -76,7 +78,7 @@ def main() -> int:
     # runtime: complementary suite through the real VFS path with the k-channel model
     steps.append(run(["run-suite", "--db", str(DB), "--model-dir", str(MODELS),
                       "--out", str(STUDY / "suite-k4"), "--queries", "60",
-                      "--seeds", "101,102", "--strategies", "none,null,oracle_miss,oracle_optimal",
+                      "--seeds", "101,102", "--strategies", "none,null,oracle_miss",
                       "--cache-pages", "32", "--degree", "2",
                       "--miss-delay-ms", "0.2", "--storage-model", "k_channel",
                       "--storage-channels", "4", "--drop-stale-jobs"],
@@ -108,10 +110,6 @@ def main() -> int:
                      outputs=[str(BACKEND.parent / "public" / "pagewise-dashboard-v2.1.json")]))
 
     # frozen manifest must be unchanged: recorded before and after
-    manifest_sha_before = None
-    if MANIFEST.exists():
-        import hashlib
-        manifest_sha_before = hashlib.sha256(MANIFEST.read_bytes()).hexdigest()
     manifest_after = None
     if MANIFEST.exists():
         import hashlib

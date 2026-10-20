@@ -33,10 +33,10 @@ def build_v21_report(study_dir: str | Path, out_path: str | Path | None = None) 
     """Generate `research_report_v21.md` (and a final summary block) mechanically."""
     study = Path(study_dir).resolve()
     out_path = Path(out_path) if out_path else study / "research_report_v21.md"
-    headroom = _load_json(study / "headroom_v21.json")
+    headroom = (_load_json(study / "headroom_v21.json") or _load_json(study / "headroom" / "headroom_v21.json"))
     offline = _load_json(study / "offline_study_v21.json")
     ledger_summary = summarize_ledger(study / "run_log.jsonl") if (study / "run_log.jsonl").exists() else None
-    suites = sorted(study.glob("suite_*/suite_summary.json"))
+    suites = sorted(study.glob("suite*/suite_summary.json"))
 
     lines: list[str] = []
 
@@ -96,9 +96,9 @@ def build_v21_report(study_dir: str | Path, out_path: str | Path | None = None) 
             supported.append("NO_HEADROOM reopened: at least one eligible k>=4 configuration shows "
                              ">= threshold oracle_optimal headroom.")
         elif decision == "NO_HEADROOM":
-            not_supported.append("Runtime prefetch benefit (H3/H4 scope): NO_HEADROOM confirmed by "
+            inconclusive.append("No >=10% headroom demonstrated within the declared action family by "
                                  "oracle_optimal in every eligible k>=4 cell of the tested grid "
-                                 "(scope: tested grid and modeled constraints only).")
+                                 "(a lower bound; practical-policy benefit is not ruled out).")
         else:
             inconclusive.append("Headroom decision inconclusive: no eligible cells in the grid.")
         w()
@@ -203,7 +203,7 @@ def build_v21_dashboard(study_dir: str | Path, out_path: str | Path) -> dict[str
     frozen v2 dashboard snapshot is never modified.
     """
     study = Path(study_dir).resolve()
-    headroom = _load_json(study / "headroom_v21.json")
+    headroom = (_load_json(study / "headroom_v21.json") or _load_json(study / "headroom" / "headroom_v21.json"))
     offline = _load_json(study / "offline_study_v21.json")
     report = {"schema_version": "v2.1", "generated_utc": time.strftime(
         "%Y-%m-%dT%H:%M:%SZ", time.gmtime())}

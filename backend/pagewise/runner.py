@@ -27,7 +27,8 @@ def _percentile(values: list[float], percentile: float) -> float | None:
 def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_count: int = 500,
                    seed: int = 1234, cache_kib: int = 4096, mixed: bool = True,
                    prefetch_config: dict[str, Any] | None = None, miss_delay_ms: float = 0.0,
-                   sparse_page_map: bool = False) -> dict[str, Any]:
+                   sparse_page_map: bool = False,
+                   static_metadata_path: str | Path | None = None) -> dict[str, Any]:
     """Trace actual SQLite VFS read requests for a reproducible read-only workload."""
     if apsw is None:
         raise RuntimeError("APSW is not installed. Run: python -m pip install -r backend/requirements.txt")
@@ -125,6 +126,7 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
                 "workload_family": case.family,
                 "plan_class": classify_plan(plan_details),
                 "plan_details": plan_details,
+                "params": list(case.params),
                 "source": "demand",
             }
             token = set_query_context(context)
@@ -192,7 +194,14 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
             first_page, last_page = row.get("first_page"), row.get("last_page")
             if isinstance(first_page, int) and isinstance(last_page, int):
                 observed_pages.update(range(first_page, last_page + 1))
-        page_map = build_page_map(db_path, observed_pages)
+        if static_metadata_path:
+            from .static_metadata import StaticMetadata, snapshot_identity
+            metadata = StaticMetadata(static_metadata_path)
+            if metadata.snapshot_identity != snapshot_identity(db_path):
+                raise ValueError("Metadata cache belongs to a different database snapshot")
+            page_map = {page: metadata.get(page) for page in observed_pages if metadata.get(page) is not None}
+        else:
+            page_map = build_page_map(db_path, observed_pages)
         (out / "page_map.json").write_text(
             json.dumps({str(k): v for k, v in page_map.items()}, indent=2), encoding="utf-8")
 

@@ -26,6 +26,18 @@ from typing import Any
 GENESIS = "0" * 64
 
 
+def source_hash() -> str:
+    """Hash source contents, including uncommitted changes, without generated data."""
+    backend = Path(__file__).resolve().parents[1]
+    digest = hashlib.sha256()
+    paths = sorted([*backend.joinpath("pagewise").glob("*.py"),
+                    *backend.joinpath("scripts").glob("*.py")])
+    for source in paths:
+        digest.update(source.relative_to(backend).as_posix().encode())
+        digest.update(source.read_bytes())
+    return digest.hexdigest()
+
+
 def config_hash(config: dict[str, Any]) -> str:
     canonical = json.dumps(config, sort_keys=True, default=str, separators=(",", ":"))
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
@@ -51,6 +63,7 @@ def record_run(log_path: str | Path, config: dict[str, Any], *, status: str,
         "error": error,
         "retry_of": retry_of,
         "host": platform.platform(),
+        "source_sha256": source_hash(),
         "prev_hash": prev_hash,
     }
     if extra:

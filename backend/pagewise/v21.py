@@ -9,12 +9,13 @@ to new ``v2.1`` output directories.
 from __future__ import annotations
 
 import json
+import hashlib
 import statistics
 from pathlib import Path
 from typing import Any
 
 from . import runledger
-from .sim import SimResult, Costs, load_reference, reference_stats, parse_storage_model, simulate
+from .sim import SimResult, Costs, load_reference, reference_stats, parse_storage_model, simulate, replay_no_prefetch
 
 
 def run_headroom_v21(reference_path: str | Path, out_dir: str | Path, *,
@@ -48,23 +49,24 @@ def run_headroom_v21(reference_path: str | Path, out_dir: str | Path, *,
     working_set_pages = len({page for row in reference for page in row["pages"]})
     cells: list[dict[str, Any]] = []
     for cache_pages in caches:
+        cell_reference = replay_no_prefetch(reference, cache_pages)
         for delay in delays:
             for k in channels:
                 params = {
                     "cache_pages": cache_pages, "delay_ms": delay, "channels": k,
                     "storage_model": ("shared" if k == 1 else storage_model),
-                    "degree": degree, "reference_sha256": runledger.config_hash(
-                        {"reference": str(reference_path)}),
+                    "degree": degree, "reference_sha256": hashlib.sha256(
+                        Path(reference_path).read_bytes()).hexdigest(),
                 }
                 model = "shared" if k == 1 else storage_model
                 try:
-                    base = simulate(reference, strategy="none", cache_pages=cache_pages,
+                    base = simulate(cell_reference, strategy="none", cache_pages=cache_pages,
                                     degree=degree, delay_ms=delay, costs=costs,
                                     storage_model=model, storage_channels=k)
-                    oracle = simulate(reference, strategy="oracle_optimal", cache_pages=cache_pages,
+                    oracle = simulate(cell_reference, strategy="oracle_optimal", cache_pages=cache_pages,
                                       degree=degree, delay_ms=delay, costs=costs,
                                       storage_model=model, storage_channels=k)
-                    diagnostic = simulate(reference, strategy="oracle_miss", cache_pages=cache_pages,
+                    diagnostic = simulate(cell_reference, strategy="oracle_miss", cache_pages=cache_pages,
                                           degree=degree, delay_ms=delay, costs=costs,
                                           storage_model=model, storage_channels=k)
                 except Exception as exc:  # failed configurations are recorded, never hidden
@@ -105,7 +107,10 @@ def run_headroom_v21(reference_path: str | Path, out_dir: str | Path, *,
     eligible_k4 = [c for c in eligible_cells if c.get("k", 1) >= 4]
     reopen = [c for c in eligible_cells if c.get("headroom_pct", 0.0) >= threshold_pct]
     reopen_k4 = [c for c in reopen if c.get("k", 1) >= 4]
-    if not eligible_k4 and not eligible_cells:
+    incomplete_k4 = [c for c in cells if c.get("channels", 1) >= 4
+                     and c["cache_pages"] * 4 <= working_set_pages
+                     and c.get("status") != "completed"]
+    if not eligible_cells:
         decision = "no_eligible_cells"
         decision_note = ("No cell satisfied cache <= working-set/4; the v2 premise of the "
                          "eligibility rule must be rechecked before concluding NO_HEADROOM.")
@@ -115,15 +120,20 @@ def run_headroom_v21(reference_path: str | Path, out_dir: str | Path, *,
                          f"{threshold_pct}% certified oracle_optimal headroom; the NO_HEADROOM "
                          "decision does not stand and the runtime comparison reopens for those "
                          "configurations.")
+    elif not eligible_k4 or incomplete_k4:
+        decision = "INCONCLUSIVE"
+        decision_note = "Eligible k>=4 cells are absent or failed; the required grid is incomplete."
     else:
         decision = "NO_HEADROOM"
         decision_note = (f"The correctly defined oracle (oracle_optimal) has < {threshold_pct}% "
                          "headroom in every eligible k>=4 configuration under the modeled "
-                         "constraints; NO_HEADROOM stands. Confidence scope: only the tested "
+                         "constraints within the declared action family. This is not an upper "
+                         "bound on all scheduling policies. Confidence scope: only the tested "
                          "cache/delay/k grid and the modeled constraints — not every possible "
                          "storage architecture.")
     report = {
         "schema_version": "v2.1",
+        "headroom_bound": "lower bound within the declared action family, not a global upper bound",
         "oracle_semantics": {
             "headroom_source": "oracle_optimal (declared offline policy; no-prefetch action included)",
             "diagnostic_retained": "oracle_miss (future-aware diagnostic policy; results preserved as measured, never forced)",
@@ -193,10 +203,28 @@ def diagnose_sim_cells(calibration_path: str | Path, run_dirs: list[str | Path],
                                  reason="demand reference missing; diagnosis blocked")
             continue
         reference = load_reference(reference_dir)
-        sim = simulate(reference, strategy="none", cache_pages=cache_pages, delay_ms=delay,
-                       costs=costs, storage_model=model)
+        strategy = str(cfg.get("strategy", "none"))
+        if strategy in {"model_a", "model_b", "hybrid", "model_ranker"}:
+            rows.append({**params, "status": "unsupported_prediction_replay",
+                         "cause": "Exact neural predictions must be replayed; a proxy table is not valid simulator validation."})
+            runledger.record_run(ledger_path or out / "run_log.jsonl", params, status="excluded",
+                                 reason="Exact neural prediction replay unavailable")
+            continue
+        tables = None
+        index_path = cfg.get("candidate_index_path")
+        if index_path and Path(index_path).exists():
+            from .models import CandidateIndex
+            index = CandidateIndex.from_json(json.loads(Path(index_path).read_text(encoding="utf-8")))
+            tables = {"max_page": index.max_page, "successors": index.successors,
+                      "second_order": index.second_order, "context": {}}
+        effective_delay = float(calibration.get("sleep_measured_ms", {}).get(str(delay), delay)) if delay else 0.0
+        sim = simulate(reference, strategy=strategy, cache_pages=cache_pages, delay_ms=effective_delay,
+                       degree=int(cfg.get("degree", 2)), workers=int(cfg.get("prefetch_workers", 1)),
+                       queue_size=int(cfg.get("queue_size", 64)),
+                       drop_stale_jobs=bool(cfg.get("drop_stale_jobs", False)),
+                       costs=costs, storage_model=model, storage_channels=cfg.get("storage_channels"), tables=tables)
         measured = float(metadata["query_latency_ms"]["total"])
-        error_pct = 100.0 * (sim.total_ms - measured) / measured
+        error_pct = 100.0 * (sim.total_ms - measured) / measured if measured else 0.0
         components = {
             "cpu_simulated_ms": sim.stats.get("cpu_simulated_ms"),
             "device_busy_ms": sim.stats.get("device_busy_ms"),

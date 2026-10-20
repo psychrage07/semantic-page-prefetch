@@ -40,6 +40,7 @@ Labels:
 from __future__ import annotations
 
 import hashlib
+import json
 import math
 import statistics
 import time
@@ -80,6 +81,7 @@ def build_training_transition_counts(
     """Markov-1/2 transition counts from TRAINING executions only."""
     first: defaultdict[int, Counter] = defaultdict(Counter)
     second: defaultdict[str, Counter] = defaultdict(Counter)
+    contextual: defaultdict[str, Counter] = defaultdict(Counter)
     first_total: Counter = Counter()
     second_total: Counter = Counter()
     for seq in sequences:
@@ -89,6 +91,8 @@ def build_training_transition_counts(
             target = pages[i]
             first[prev1][target] += 1
             first_total[prev1] += 1
+            context_key = f"{prev1}|{seq.get('template_id')}|{seq.get('plan_class')}"
+            contextual[context_key][target] += 1
             if i >= 2:
                 key = f"{pages[i - 2]}:{prev1}"
                 second[key][target] += 1
@@ -104,14 +108,26 @@ def build_training_transition_counts(
         "second_total": dict(second_total),
         "successors": successors,
         "second_order": second_order,
+        "contextual": {k: dict(c) for k, c in contextual.items()},
         "max_page": max((max(pages) for seq in sequences for pages in [seq["pages"]] if pages), default=1),
     }
 
 
 def param_bucket(params: Any, buckets: int = PARAM_BUCKETS) -> int:
-    key = str(params)
+    key = json.dumps(params, sort_keys=True, default=str)
     digest = hashlib.blake2b(key.encode("utf-8"), digest_size=8).digest()
     return int.from_bytes(digest, "little") % buckets
+
+
+def prediction_context(sequence: dict[str, Any], workload_cases: dict | None = None) -> dict[str, Any]:
+    """The same observable query context for training, validation and inference."""
+    case = (workload_cases or {}).get(str(sequence.get("query_id")), {})
+    params = case.get("params", sequence.get("params"))
+    return {"template_id": sequence.get("template_id"),
+            "workload_family": sequence.get("workload_family"),
+            "plan_class": sequence.get("plan_class"), "params": params,
+            "param_bucket": param_bucket(params) if params is not None else None,
+            "param_available": params is not None}
 
 
 def markov2_feature_block(candidate: int, prev2: int | None, prev1: int, counts: dict[str, Any]) -> list[float]:
@@ -144,6 +160,26 @@ def markov2_feature_block(candidate: int, prev2: int | None, prev1: int, counts:
         1.0 if candidate in succ1 else 0.0,
         (math.log1p(c2) / math.log1p(total2)) if total2 else 0.0,
     ]
+
+
+def markov2_feature_matrix(candidates, history, counts):
+    """Same six training-derived features; build context ranks once per group."""
+    import numpy as np
+    prev1 = history[-1] if history else 0
+    key = f"{history[-2]}:{prev1}" if len(history) > 1 else ""
+    second = counts["second"].get(key, {})
+    first = counts["first"].get(prev1, {})
+    total2 = counts["second_total"].get(key, 0)
+    total1 = counts["first_total"].get(prev1, 0)
+    successors2 = counts["second_order"].get(key, [])
+    ranks = {p: (i + 1) / len(successors2) for i, p in enumerate(successors2)}
+    successors1 = set(counts["successors"].get(prev1, []))
+    denom = math.log1p(total2) if total2 else 1.0
+    return np.asarray([[second.get(p, 0) / total2 if total2 else 0.0,
+                        first.get(p, 0) / total1 if total1 else 0.0,
+                        float(p in ranks), ranks.get(p, 1.0), float(p in successors1),
+                        math.log1p(second.get(p, 0)) / denom if total2 else 0.0]
+                       for p in candidates], dtype=np.float32)
 
 
 def variant_feature_vector(
@@ -225,13 +261,7 @@ def variant_training_pairs(
     for seq in train:
         pages = [int(p) for p in seq["pages"]]
         flags = miss_replay.get(str(seq.get("query_id"))) if miss_replay is not None else None
-        case = (workload_cases or {}).get(str(seq.get("query_id")), {})
-        base_context = {"template_id": seq.get("template_id"),
-                        "workload_family": seq.get("workload_family"),
-                        "plan_class": seq.get("plan_class")}
-        if variant == "b3":
-            base_context["param_bucket"] = param_bucket(case.get("params"))
-            base_context["param_available"] = True
+        base_context = prediction_context(seq, workload_cases)
         for i in range(1, len(pages)):
             if flags is not None and (i >= len(flags) or not flags[i]):
                 # flags[j] marks observed read at position j; the transition
@@ -312,11 +342,16 @@ def train_variant_model(
 # ------------------------------------------------------------- calibration
 
 def candidate_logits(model: Any, history: list[int], candidates: list[int], context: dict[str, Any],
-                     page_map: dict[str, Any], variant: str, counts: dict[str, Any] | None) -> Any:
+                     page_map: dict[str, Any], variant: str, counts: dict[str, Any] | None,
+                     *, max_page: int | None = None) -> Any:
     if not candidates:
         return M.np.zeros((0,), dtype=M.np.float32)
+    # Persisted training normalization must not change with the current candidates.
+    scale = max_page if max_page is not None else (counts or {}).get("max_page")
+    if scale is None:
+        raise ValueError("candidate_logits requires the training max_page normalization")
     x = M.np.stack([
-        variant_feature_vector(history, p, context, page_map, max(candidates + [1]), variant, counts)
+        variant_feature_vector(history, p, context, page_map, scale, variant, counts)
         for p in candidates
     ]).astype(M.np.float32)
     with M.torch.no_grad():
@@ -348,20 +383,15 @@ def fit_temperature_from_validation(
     target_pos: list[int] = []
     for seq in val:
         pages = [int(p) for p in seq["pages"]]
-        case = (workload_cases or {}).get(str(seq.get("query_id")), {})
-        base_context = {"template_id": seq.get("template_id"),
-                        "workload_family": seq.get("workload_family"),
-                        "plan_class": seq.get("plan_class")}
-        if variant == "b3":
-            base_context["param_bucket"] = param_bucket(case.get("params"))
-            base_context["param_available"] = True
+        base_context = prediction_context(seq, workload_cases)
         for i in range(1, len(pages)):
             history, target = pages[:i][-M.HISTORY_LENGTH:], pages[i]
             context = {**base_context, "position_in_query": min(i, 512) / 512.0}
             candidates = index.candidates(history)
             if target not in candidates:
                 continue
-            logits = candidate_logits(model, history, candidates, context, page_map, variant, counts)
+            logits = candidate_logits(model, history, candidates, context, page_map, variant, counts,
+                                      max_page=index.max_page)
             if len(logits) >= 2:
                 logits_list.append(logits)
                 target_pos.append(candidates.index(target))

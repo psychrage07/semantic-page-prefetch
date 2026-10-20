@@ -33,6 +33,12 @@ class BoundedPageCache:
         with self._lock:
             return page in self._pages
 
+    def peek(self, page: int) -> bytes | None:
+        """Inspect already-observed bytes without changing LRU or hit statistics."""
+        with self._lock:
+            entry = self._pages.get(page)
+            return entry[0] if entry is not None else None
+
     def get(self, page: int, *, demand: bool = True, query_id: str | None = None) -> bytes | None:
         with self._lock:
             entry = self._pages.get(page)
@@ -214,20 +220,31 @@ class PredictiveRuntime:
                  prefetch_workers: int = 1):
         from .models import CandidateIndex, load_model, page_map_digest
 
-        supported = {"none", "null", "oracle", "oracle_next", "oracle_miss", "oracle_optimal", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"}
+        if strategy == "oracle_optimal":
+            raise ValueError("oracle_optimal is a simulator-only action-family comparison; use oracle_miss for runtime diagnostics")
+        supported = {"none", "null", "oracle", "oracle_next", "oracle_miss", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "model_ranker"}
         if strategy not in supported:
             raise ValueError(f"Unsupported strategy: {strategy}; expected one of {sorted(supported)}")
         self.database_path = Path(database_path).resolve()
         self.page_size = int(page_size)
+        self._database_pages = self.database_path.stat().st_size // self.page_size
         self.page_map = json.loads(Path(page_map_path).read_text(encoding="utf-8"))
         index_payload = json.loads(Path(candidate_index_path).read_text(encoding="utf-8"))
         self.index = CandidateIndex.from_json(index_payload)
+        if self.index.layout_database_path:
+            self.index.layout_database_path = str(self.database_path)
         expected_hash = str(index_payload.get("page_map_sha256", ""))
         actual_hash = page_map_digest(self.page_map)
         if expected_hash and expected_hash != actual_hash:
             raise ValueError("Page-map fingerprint mismatch. The model was trained with a different database layout; use the same static database snapshot.")
         self.strategy = strategy
         self.model = None
+        self.ranker = None
+        if strategy == "model_ranker":
+            from .ranking import NeuralPredictor
+            if not model_path:
+                raise ValueError("model_ranker requires a checkpoint")
+            self.ranker = NeuralPredictor(model_path, self.index, self.page_map)
         self.diagnostics_enabled = bool(diagnostics_enabled)
         self._oracle_sequences: dict[str, list[int]] = {}
         self._oracle_observed_positions: dict[str, int] = {}
@@ -259,8 +276,6 @@ class PredictiveRuntime:
                 self._oracle_miss[str(qid)] = [[int(entry[0]), bool(entry[1])] for entry in seq]
         if strategy == "oracle_miss" and not self._oracle_miss:
             raise ValueError("oracle_miss requires a non-empty demand reference")
-        if strategy == "oracle_optimal" and not self._oracle_miss:
-            raise ValueError("oracle_optimal requires a non-empty demand reference")
         self.recording = bool(record_demand_reference)
         self._demand_reference: dict[str, list[list[Any]]] = {}
         self.model_path = str(Path(model_path).resolve()) if model_path else None
@@ -380,7 +395,11 @@ class PredictiveRuntime:
             return
         if self.strategy == "none":
             return
-        if self.strategy in {"oracle_miss", "oracle_optimal"}:
+        if self.strategy == "model_ranker" and self.index.strategy == "layout":
+            from .layout import parse_children
+            observed = self.cache.peek(history[-1])
+            context = {**context, "layout_children": list(parse_children(observed, history[-1], self._database_pages)) if observed else []}
+        if self.strategy in {"oracle_miss"}:
             query_id = str(context.get("query_id"))
             position = context.get("query_page_position")
             seq = self._oracle_miss.get(query_id, [])
@@ -491,7 +510,7 @@ class PredictiveRuntime:
                                 if page not in seen:
                                     ranked.append((page, 1.0 / rank))
                                     seen.add(page)
-                        elif self.strategy in {"oracle_miss", "oracle_optimal"}:
+                        elif self.strategy in {"oracle_miss"}:
                             sequence = self._oracle_miss.get(str(context.get("query_id")), [])
                             position = int(context.get("query_page_position") or 0)
                             # Next `degree` pages that would miss under `none`, after the
@@ -512,6 +531,8 @@ class PredictiveRuntime:
                             key = f"{history[-2]}:{history[-1]}" if len(history) >= 2 else ""
                             candidates = self.index.second_order.get(key, []) or self.index.successors.get(history[-1], []) if history else []
                             ranked = [(p, 1.0 / rank) for rank, p in enumerate(candidates, start=1)]
+                        elif self.strategy == "model_ranker":
+                            ranked = self.ranker.rank(history, context)
                         elif self.strategy == "hybrid" and len(history) >= 2 and self.index.second_order.get(f"{history[-2]}:{history[-1]}"):
                             candidates = self.index.second_order[f"{history[-2]}:{history[-1]}"]
                             ranked = [(p, 1.0 / rank) for rank, p in enumerate(candidates, start=1)]
@@ -554,7 +575,7 @@ class PredictiveRuntime:
                                 self._stats["inference_ms_max"] = scored_ms
                             self._stats["completed_jobs"] += 1
                         prefetches = 0
-                        threshold = self.confidence_threshold if self.strategy in {"model_a", "model_b", "hybrid", "oracle", "oracle_next", "oracle_miss"} else 0.0
+                        threshold = self.confidence_threshold if self.strategy in {"model_a", "model_b", "hybrid", "model_ranker", "oracle", "oracle_next", "oracle_miss"} else 0.0
                         for page, score in ranked[:max(self.degree * 4, 8)]:
                             if score < threshold or prefetches >= self.degree:
                                 selected.append({"page": int(page), "score": float(score), "status": "below_threshold_or_degree"})
