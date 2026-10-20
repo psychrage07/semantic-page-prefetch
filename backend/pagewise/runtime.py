@@ -205,6 +205,7 @@ class PredictiveRuntime:
                  predict_on: str = "all", predict_every: int = 1,
                  max_score_candidates: int = 0,
                  storage_model: str = "independent",
+                 storage_channels: int | None = None,
                  storage_device: SimulatedStorageDevice | None = None,
                  drop_stale_jobs: bool = False, oracle_trace_path: str | Path | None = None,
                  diagnostics_enabled: bool = True,
@@ -213,7 +214,7 @@ class PredictiveRuntime:
                  prefetch_workers: int = 1):
         from .models import CandidateIndex, load_model, page_map_digest
 
-        supported = {"none", "null", "oracle", "oracle_next", "oracle_miss", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"}
+        supported = {"none", "null", "oracle", "oracle_next", "oracle_miss", "oracle_optimal", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"}
         if strategy not in supported:
             raise ValueError(f"Unsupported strategy: {strategy}; expected one of {sorted(supported)}")
         self.database_path = Path(database_path).resolve()
@@ -258,6 +259,8 @@ class PredictiveRuntime:
                 self._oracle_miss[str(qid)] = [[int(entry[0]), bool(entry[1])] for entry in seq]
         if strategy == "oracle_miss" and not self._oracle_miss:
             raise ValueError("oracle_miss requires a non-empty demand reference")
+        if strategy == "oracle_optimal" and not self._oracle_miss:
+            raise ValueError("oracle_optimal requires a non-empty demand reference")
         self.recording = bool(record_demand_reference)
         self._demand_reference: dict[str, list[list[Any]]] = {}
         self.model_path = str(Path(model_path).resolve()) if model_path else None
@@ -280,9 +283,21 @@ class PredictiveRuntime:
         self.predict_every = max(1, int(predict_every))
         self.max_score_candidates = max(0, int(max_score_candidates))
         self.storage_model = storage_model
-        if storage_model == "shared" and storage_device is None:
-            self.storage_device = SimulatedStorageDevice(self.miss_delay_ms, enabled=True)
+        self.storage_channels = int(storage_channels or (1 if storage_model == "shared" else 0))
+        if storage_device is None:
+            if str(storage_model).startswith("k_channel") and self.miss_delay_ms > 0:
+                # v2.1 abstract k-channel model: k concurrent service slots.
+                from .storage import KChannelStorageDevice
+                self.storage_device = KChannelStorageDevice(self.miss_delay_ms,
+                                                            channels=self.storage_channels or 4,
+                                                            enabled=True)
+                self.storage_model = self.storage_device.storage_kind
+            elif storage_model == "shared" and self.miss_delay_ms > 0:
+                self.storage_device = SimulatedStorageDevice(self.miss_delay_ms, enabled=True)
+            else:
+                self.storage_device = None
         else:
+            self.storage_device = storage_device
             self.storage_device = storage_device
         self.drop_stale_jobs = bool(drop_stale_jobs)
         self._active_query_id: str | None = None
@@ -365,7 +380,7 @@ class PredictiveRuntime:
             return
         if self.strategy == "none":
             return
-        if self.strategy == "oracle_miss":
+        if self.strategy in {"oracle_miss", "oracle_optimal"}:
             query_id = str(context.get("query_id"))
             position = context.get("query_page_position")
             seq = self._oracle_miss.get(query_id, [])
@@ -476,7 +491,7 @@ class PredictiveRuntime:
                                 if page not in seen:
                                     ranked.append((page, 1.0 / rank))
                                     seen.add(page)
-                        elif self.strategy == "oracle_miss":
+                        elif self.strategy in {"oracle_miss", "oracle_optimal"}:
                             sequence = self._oracle_miss.get(str(context.get("query_id")), [])
                             position = int(context.get("query_page_position") or 0)
                             # Next `degree` pages that would miss under `none`, after the

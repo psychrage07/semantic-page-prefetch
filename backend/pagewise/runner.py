@@ -12,6 +12,8 @@ from .metadata import build_page_map, read_page_size
 from .tracing import TraceRecorder, TraceVFS, apsw, reset_query_context, set_query_context
 from .workloads import classify_plan, explain_query_plan, generate_workload
 from .runtime import PredictiveRuntime, SimulatedStorageDevice
+from .sim import parse_storage_model
+from .storage import KChannelStorageDevice
 
 
 def _percentile(values: list[float], percentile: float) -> float | None:
@@ -66,7 +68,17 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
     drop_stale_jobs = bool((prefetch_config or {}).get("drop_stale_jobs", False))
     oracle_trace_path = (prefetch_config or {}).get("oracle_trace_path")
     effective_delay = float((prefetch_config or {}).get("miss_delay_ms", miss_delay_ms) or 0.0)
-    storage_device = SimulatedStorageDevice(effective_delay, enabled=(storage_model == "shared"))
+    # v2.1: which modeled device claims the injected delay. "shared" keeps the
+    # v2 single serialized channel; "k_channel" is the abstract k-slot model
+    # (simulated concurrency scenario, not a physical device label). All other
+    # models run delay-free (independent: single-owner per access sleep).
+    device_kind, device_channels = parse_storage_model(storage_model,
+                                                       (prefetch_config or {}).get("storage_channels"))
+    if device_kind == "k_channel" and effective_delay > 0:
+        storage_device = KChannelStorageDevice(effective_delay, channels=device_channels, enabled=True)
+        storage_model = storage_device.storage_kind
+    else:
+        storage_device = SimulatedStorageDevice(effective_delay, enabled=(device_kind == "shared"))
 
     if prefetch_config is not None:
         runtime = PredictiveRuntime(
@@ -81,6 +93,7 @@ def trace_workload(database_path: str | Path, output_dir: str | Path, *, query_c
             max_score_candidates=int(prefetch_config.get("max_score_candidates", 0)),
             prediction_log_path=out / "predictions.jsonl",
             storage_model=storage_model,
+            storage_channels=device_channels,
             storage_device=storage_device,
             drop_stale_jobs=drop_stale_jobs,
             oracle_trace_path=oracle_trace_path,

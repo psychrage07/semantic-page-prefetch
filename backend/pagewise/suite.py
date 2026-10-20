@@ -11,7 +11,7 @@ import numpy as np
 
 from .runner import trace_workload
 
-VALID_STRATEGIES = ("stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "null", "oracle_next", "oracle_miss")
+VALID_STRATEGIES = ("stock", "none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "null", "oracle_next", "oracle_miss", "oracle_optimal")
 
 
 def recover_suite(output_dir: str | Path) -> dict[str, Any]:
@@ -83,6 +83,7 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
               queue_size: int = 64, predict_on: str = "all", predict_every: int = 1,
               max_score_candidates: int = 0,
               storage_model: str = "independent",
+              storage_channels: int | None = None,
               drop_stale_jobs: bool = False, diagnostics_enabled: bool = True,
               prefetch_workers: int = 1) -> dict[str, Any]:
     """Run comparable strategies on identical generated query parameters per seed.
@@ -110,10 +111,11 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                            cache_kib=cache_kib, mixed=True)
             oracle_trace_path = str(reference / "trace.jsonl")
         oracle_miss_path = None
-        if "oracle_miss" in strategies:
+        if "oracle_miss" in strategies or "oracle_optimal" in strategies:
             # A no-prefetch run with the same cache records, per query, the ordered
             # demand page stream and which pages missed. Delay is irrelevant to which
             # pages are demanded, so the reference runs with no injected delay.
+            # oracle_optimal consumes the same declared reference-cache replay.
             reference = out / "oracle-miss-reference" / f"seed-{seed}"
             ref_cfg = {
                 "strategy": "none", "candidate_index_path": str(model_dir / "candidate_index.json"),
@@ -121,6 +123,8 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                 "confidence_threshold": threshold, "queue_size": queue_size, "miss_delay_ms": 0.0,
                 "predict_on": predict_on, "predict_every": predict_every,
                 "max_score_candidates": max_score_candidates, "storage_model": storage_model,
+                "storage_channels": int(storage_channels) if storage_channels else None,
+                "storage_channels": int(storage_channels) if storage_channels else None,
                 "drop_stale_jobs": drop_stale_jobs, "diagnostics_enabled": diagnostics_enabled,
                 "record_demand_reference": True, "prefetch_workers": 1,
             }
@@ -149,10 +153,11 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                     "predict_every": predict_every,
                     "max_score_candidates": max_score_candidates,
                     "storage_model": storage_model,
+                    "storage_channels": int(storage_channels) if storage_channels else None,
                     "drop_stale_jobs": drop_stale_jobs,
                     "diagnostics_enabled": diagnostics_enabled,
                     "oracle_trace_path": oracle_trace_path if strategy in {"oracle", "oracle_next"} else None,
-                    "oracle_miss_path": oracle_miss_path if strategy == "oracle_miss" else None,
+                    "oracle_miss_path": oracle_miss_path if strategy in {"oracle_miss", "oracle_optimal"} else None,
                     "prefetch_workers": int(prefetch_workers),
                 }
             result = trace_workload(database_path, run_path, query_count=queries, seed=seed,
@@ -166,9 +171,9 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
                 "query_latency_ms": meta["query_latency_ms"],
                 "runtime_stats": json.loads((run_path / "runtime_stats.json").read_text(encoding="utf-8")) if (run_path / "runtime_stats.json").exists() else None,
                 "mode": "latency-injected" if miss_delay_ms > 0 else "real-storage-no-injected-delay",
-                "miss_delay_ms": miss_delay_ms,
-                "storage_model": storage_model,
-                "drop_stale_jobs": drop_stale_jobs,
+                "miss_delay_ms": miss_delay_ms,                    "storage_model": storage_model,
+                    "storage_channels": int(storage_channels) if storage_channels else None,
+                    "drop_stale_jobs": drop_stale_jobs,
                 "physical_io_note": meta["physical_io_note"],
             })
             print(f"Completed trial={repeat_idx + 1} seed={seed} strategy={strategy}: p50={meta['query_latency_ms']['median']} ms")
@@ -189,6 +194,7 @@ def run_suite(database_path: str | Path, model_dir: str | Path, output_dir: str 
         "max_score_candidates": max_score_candidates,
         "miss_delay_ms": miss_delay_ms,
         "storage_model": storage_model,
+        "storage_channels": int(storage_channels) if storage_channels else None,
         "drop_stale_jobs": drop_stale_jobs,
         "mode": "latency-injected" if miss_delay_ms > 0 else "real-storage-no-injected-delay",
         "warning": "VFS reads may be satisfied by the OS cache. This report does not prove every miss caused physical disk I/O. Stock SQLite has no additional custom page cache, so it is a practical baseline rather than an identical-cache ablation.",

@@ -14,6 +14,7 @@ from .metadata import build_page_map, dbstat_available, read_page_size
 from .models import train_models
 from .reporting import build_markdown_report, build_consolidated_report, write_dashboard_snapshot
 from .runner import trace_workload
+from .v21 import run_headroom_v21, diagnose_sim_cells
 from .suite import recover_suite, run_runtime_sensitivity_sweep, run_suite, summarize_suite
 from .sweep import train_evaluate_sweep
 from .offline import run_offline_study, run_ablation
@@ -96,7 +97,7 @@ def main(argv: list[str] | None = None) -> int:
     prefetch.add_argument("--db", required=True)
     prefetch.add_argument("--model-dir", required=True, help="Directory containing candidate_index.json and model_a.pt/model_b.pt")
     prefetch.add_argument("--model-path", default=None, help="Optional explicit model checkpoint for model_a/model_b strategies, e.g. a retrained ablation checkpoint")
-    prefetch.add_argument("--strategy", choices=["none", "null", "oracle", "oracle_next", "oracle_miss", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"], default="model_b")
+    prefetch.add_argument("--strategy", choices=["none", "null", "oracle", "oracle_next", "oracle_miss", "oracle_optimal", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"], default="model_b")
     prefetch.add_argument("--out", required=True)
     prefetch.add_argument("--queries", type=int, default=250)
     prefetch.add_argument("--seed", type=int, default=9876)
@@ -109,7 +110,8 @@ def main(argv: list[str] | None = None) -> int:
     prefetch.add_argument("--predict-every", type=int, default=1, help="Schedule at most every Nth eligible observed page")
     prefetch.add_argument("--miss-delay-ms", type=float, default=0.0, help="Optional delay injected at custom-cache demand misses; results must be labelled as latency-injected")
     prefetch.add_argument("--max-score-candidates", type=int, default=0, help="When >0, pre-rank candidates by Markov prior and only score the top N neurally; 0 scores all (default)")
-    prefetch.add_argument("--storage-model", choices=["independent", "shared"], default="independent", help="Storage resource model: independent (default, non-interfering parallel delay) or shared (single-queue serialized device)")
+    prefetch.add_argument("--storage-model", choices=["independent", "shared", "k_channel"], default="independent", help="Storage resource model: independent (parallel delay), shared (single serialized channel), or k_channel (v2.1 abstract k concurrent slots; simulated concurrency scenario)")
+    prefetch.add_argument("--storage-channels", type=int, default=None, help="Number of service slots k for --storage-model k_channel (evaluated at k=1, 4, 16; requires device-specific calibration before any HDD/NVMe label)")
     prefetch.add_argument("--drop-stale-jobs", action="store_true", help="Drop queued prediction jobs whose query has already finished")
     prefetch.add_argument("--oracle-trace", default=None, help="JSONL demand trace the oracle_next strategy replays to prefetch the true next pages")
     prefetch.add_argument("--oracle-miss-ref", default=None, help="demand_reference.json from a none run; oracle_miss prefetches the next K would-be-miss pages")
@@ -147,7 +149,8 @@ def main(argv: list[str] | None = None) -> int:
     suite.add_argument("--predict-every", type=int, default=1)
     suite.add_argument("--miss-delay-ms", type=float, default=0.0, help="Use >0 only for an explicitly reported latency-injected mode")
     suite.add_argument("--max-score-candidates", type=int, default=0, help="Pre-rank then cap neural scoring candidates; 0=score all")
-    suite.add_argument("--storage-model", choices=["independent", "shared"], default="independent", help="Storage resource model: independent (default, non-interfering parallel delay) or shared (single-queue serialized device)")
+    suite.add_argument("--storage-model", choices=["independent", "shared", "k_channel"], default="independent", help="Storage resource model: independent (parallel delay), shared (single serialized channel), or k_channel (v2.1 abstract k concurrent slots; simulated concurrency scenario)")
+    suite.add_argument("--storage-channels", type=int, default=None, help="Service slots k for --storage-model k_channel (v2.1: evaluated at k=1, 4, 16)")
     suite.add_argument("--drop-stale-jobs", action="store_true", help="Drop queued prediction jobs whose query has already finished")
     suite.add_argument("--no-diagnostics", action="store_true", help="Disable JSONL diagnostic logging (trace.jsonl, predictions.jsonl) for benchmark runs")
     suite.add_argument("--prefetch-workers", type=int, default=1, help="Prefetch read threads shared by every strategy in the suite")
@@ -190,6 +193,14 @@ def main(argv: list[str] | None = None) -> int:
     dashboard_export.add_argument("--run-dir", required=True, help="Root directory of an experiment run")
     dashboard_export.add_argument("--out", required=True, help="Output JSON path, e.g. ../public/pagewise-dashboard.json")
 
+    report_v21 = sub.add_parser("report-v21", help="Generate the v2.1 consolidated research report from a v2.1 study directory (mechanically, from verified artifacts)")
+    report_v21.add_argument("--study-dir", required=True, help="New v2.1 output directory containing headroom_v21.json / offline_study_v21.json / run_log.jsonl")
+    report_v21.add_argument("--out", default=None, help="Output Markdown path; defaults to study_dir/research_report_v21.md")
+
+    dashboard_v21 = sub.add_parser("dashboard-export-v21", help="Export the v2.1 dashboard snapshot (new file; the frozen v2 snapshot is untouched)")
+    dashboard_v21.add_argument("--study-dir", required=True)
+    dashboard_v21.add_argument("--out", required=True, help="Output JSON path, e.g. ../public/pagewise-dashboard-v2.1.json")
+
     ev = sub.add_parser("evaluate", help="Evaluate trained rankers and simple predictors on held-out executions")
     ev.add_argument("--sequences", required=True, help="test_sequences.jsonl produced by training")
     ev.add_argument("--page-map", required=True)
@@ -211,6 +222,37 @@ def main(argv: list[str] | None = None) -> int:
     offline.add_argument("--hidden", type=int, default=128)
     offline.add_argument("--candidates", type=int, default=32)
     offline.add_argument("--top-k", type=int, default=8)
+
+    offline_v21 = sub.add_parser("offline-study-v21",
+                                  help="v2.1 offline study: Model B preserved + B2/B3 + declared family + Holm")
+    offline_v21.add_argument("--sequences", required=True)
+    offline_v21.add_argument("--workload", required=True, help="workload.jsonl with query parameters")
+    offline_v21.add_argument("--page-map", required=True)
+    offline_v21.add_argument("--out", required=True, help="New v2.1 output directory (frozen v2 artifacts are never edited)")
+    offline_v21.add_argument("--seeds", default="101,102,103,104,105,106,107,108,109,110", help="Development seeds 101-110 for tuning only")
+    offline_v21.add_argument("--epochs", type=int, default=20)
+    offline_v21.add_argument("--hidden", type=int, default=128)
+    offline_v21.add_argument("--candidates", type=int, default=32)
+    offline_v21.add_argument("--top-k", type=int, default=8)
+    offline_v21.add_argument("--ledger", default=None, help="run_log.jsonl path; every configuration attempt is appended")
+
+    headroom = sub.add_parser("headroom-v21",
+                              help="v2.1 oracle headroom grid: oracle_optimal vs none across k-channel configs")
+    headroom.add_argument("--reference", required=True, help="demand_reference.json from a none run")
+    headroom.add_argument("--caches", default="32,64,128", help="Comma-separated cache-page capacities")
+    headroom.add_argument("--delays", default="0.1,0.2,0.5,1.0", help="Comma-separated injected delays (ms)")
+    headroom.add_argument("--channels", default="1,4,16", help="k-channel slots k evaluated (k=1 is the shared model)")
+    headroom.add_argument("--storage-model", choices=["shared", "k_channel"], default="k_channel")
+    headroom.add_argument("--degree", type=int, default=2)
+    headroom.add_argument("--threshold-pct", type=float, default=10.0, help="Reopen threshold: any eligible configuration with >= this headroom reopens the runtime comparison")
+    headroom.add_argument("--out", required=True, help="New v2.1 output directory")
+    headroom.add_argument("--ledger", default=None)
+
+    simdiag = sub.add_parser("sim-validate-cells",
+                             help="v2.1 simulator validation cell diagnosis (15%% target; decomposes error causes)")
+    simdiag.add_argument("--calibration", required=True)
+    simdiag.add_argument("--runs", required=True, nargs="+", help="Run directories (real runtime runs) used as validation targets")
+    simdiag.add_argument("--out", required=True)
 
     ablate = sub.add_parser("offline-ablation", help="Model B semantic-feature ablation on an offline split")
     ablate.add_argument("--sequences", required=True)
@@ -275,6 +317,7 @@ def main(argv: list[str] | None = None) -> int:
                 "miss_delay_ms": args.miss_delay_ms,
                 "max_score_candidates": args.max_score_candidates,
                 "storage_model": args.storage_model,
+                "storage_channels": args.storage_channels or (4 if args.storage_model == "k_channel" else None),
                 "drop_stale_jobs": args.drop_stale_jobs,
                 "diagnostics_enabled": not args.no_diagnostics,
                 "oracle_trace_path": str(Path(args.oracle_trace).resolve()) if args.oracle_trace else None,
@@ -293,6 +336,7 @@ def main(argv: list[str] | None = None) -> int:
                                   predict_every=args.predict_every,
                                   max_score_candidates=args.max_score_candidates,
                                   storage_model=args.storage_model,
+                                  storage_channels=args.storage_channels or (4 if args.storage_model == "k_channel" else None),
                                   drop_stale_jobs=args.drop_stale_jobs,
                                   diagnostics_enabled=not args.no_diagnostics,
                                   prefetch_workers=args.prefetch_workers))
@@ -331,6 +375,12 @@ def main(argv: list[str] | None = None) -> int:
                                                    optimized_suite_dir=args.optimized_suite))
         elif args.command == "dashboard-export":
             _print_json(write_dashboard_snapshot(args.run_dir, args.out))
+        elif args.command == "report-v21":
+            from .report_v21 import build_v21_report
+            _print_json(build_v21_report(args.study_dir, args.out))
+        elif args.command == "dashboard-export-v21":
+            from .report_v21 import build_v21_dashboard
+            _print_json(build_v21_dashboard(args.study_dir, args.out))
         elif args.command == "build-sequences":
             seqs = build_sequences(args.trace, args.page_map, args.out)
             _print_json({"sequence_count": len(seqs), "output": str(Path(args.out).resolve()),
@@ -344,6 +394,33 @@ def main(argv: list[str] | None = None) -> int:
                                             args.model_a, args.model_b, args.out, top_k=args.top_k,
                                             semantic_ablations=_parse_ablation_specs(args.semantic_ablations),
                                             retrained_ablation_dir=args.retrained_ablation_dir))
+        elif args.command == "offline-study-v21":
+            from .offline import run_offline_study_v21
+            seeds = _parse_int_list(args.seeds)
+            report = run_offline_study_v21(args.sequences, args.workload, args.page_map, args.out,
+                                           seeds=seeds, epochs=args.epochs, hidden=args.hidden,
+                                           max_candidates=args.candidates, top_k=args.top_k)
+            if args.ledger:
+                from . import runledger
+                runledger.record_run(args.ledger,
+                                     {"study": "offline-study-v21", "seeds": seeds, "epochs": args.epochs,
+                                      "hidden": args.hidden, "candidates": args.candidates, "top_k": args.top_k},
+                                     status="completed", outputs=[str(Path(args.out) / "offline_study_v21.json")],
+                                     metrics={"family_members": len(report.get("family_reports", {}).get("params", {}).get("members", {}))})
+            _print_json(report)
+        elif args.command == "headroom-v21":
+            delays = _parse_str_list(args.delays)
+            report = run_headroom_v21(
+                args.reference, args.out,
+                caches=_parse_int_list(args.caches),
+                delays=[float(v) for v in delays],
+                channels=_parse_int_list(args.channels),
+                storage_model=args.storage_model, degree=args.degree,
+                threshold_pct=args.threshold_pct, ledger_path=args.ledger)
+            _print_json(report)
+        elif args.command == "sim-validate-cells":
+            _print_json(diagnose_sim_cells(args.calibration, args.runs, out_dir=args.out,
+                                           ledger_path=args.ledger))
         elif args.command == "offline-study":
             _print_json(run_offline_study(args.sequences, args.workload, args.page_map, args.out,
                                           seeds=_parse_int_list(args.seeds), epochs=args.epochs,
