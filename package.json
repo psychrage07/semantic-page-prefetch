@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "node scripts/start-local.mjs",
+    "preview:local": "node scripts/start-local.mjs --preview",
     "build": "vite build",
     "preview": "vite preview"
   },

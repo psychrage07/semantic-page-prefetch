@@ -2,6 +2,8 @@
 
 This backend is the experimental engine behind the Pagewise SQLite prefetching research. It intentionally starts with a development-size dataset so the end-to-end data/model path can be checked before attempting a multi-gigabyte database.
 
+The React dashboard's **Local experiments** tab connects to this backend through `local_lab.py`. From the repository root, `npm run dev:local` starts both the loopback API and Vite frontend. Its command form reflects every Pagewise CLI option and includes the research scripts; the one-click development pipeline runs generate → trace → build sequences → train → evaluate → run suite → dashboard export. Generated files live in `backend/runs/local-lab/` and can be opened from the browser. Use the CLI examples below for large or protocol-frozen experiments.
+
 ## 1. Install and check the environment
 
 Use Python 3.11 or 3.12 with available PyTorch and APSW wheels. From PowerShell in this folder, use `python` rather than the optional Windows `py` launcher (which may not be installed):

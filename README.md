@@ -29,7 +29,7 @@ Pagewise investigates whether application-level database semantics help an MLP p
 
 ## Current repository contents
 
-- `src/`: React/Vite research dashboard. It loads measured backend results from `public/pagewise-dashboard.json`; browser-only replay and calculator controls remain explicitly labelled illustrative fixtures.
+- `src/`: React/Vite research dashboard. It loads measured backend results from `public/pagewise-dashboard.json`, and its Local experiments workspace starts real backend runs through the loopback-only bridge. The overview calculator and its preview controls remain illustrative fixtures.
 - `backend/pagewise/`: new Python backend with database generation, query workload generation, APSW VFS tracing, page metadata, feature generation, PyTorch MLP rankers, baseline evaluation, a bounded asynchronous prefetch cache, repeated-run experiments, and an optional dashboard for measured output files.
 - `backend/tests/`: automated tests for database/workload generation, trace parsing, ranker training/evaluation, cache accounting, and an APSW-gated VFS integration test.
 
@@ -46,7 +46,7 @@ Pagewise investigates whether application-level database semantics help an MLP p
 Use Python 3.12 if available. Open PowerShell in the `backend` folder:
 
 ```powershell
-py -3.12 -m venv .venv
+python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
 python -m pip install -e ".[test]"
@@ -55,16 +55,26 @@ python -m pagewise.cli check-env
 
 Read `backend/README.md` for the full generate → trace → train → evaluate → prefetch experiment.
 
-## Run the existing React dashboard
+## Run the local frontend and backend
 
 From the repository root:
 
 ```powershell
 npm ci
-npm run dev
+cd backend
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -e ".[test]"
+cd ..
+npm run dev:local
 ```
 
-The React dashboard loads the measured backend snapshot in `public/pagewise-dashboard.json` when present, including offline predictor metrics, final runtime suites, latency series, and trace samples. Browser-only replay and calculator controls remain illustrative and must not be cited as measured results. For raw generated artifacts, the optional Streamlit measured-results viewer is documented in `backend/README.md`.
+Open the Vite URL shown in the terminal and select **Local experiments**. The one-click development run generates a small database, traces real reads, trains and evaluates models, runs a policy suite, and exports a measured dashboard. The command form exposes the 22 Pagewise CLI commands and 14 research-script entry points; run logs and artifacts are browsable in the same tab. Use **Show on overview** on a completed `dashboard.json` to inspect its measured output. Runs and checkpoints are saved under ignored `backend/runs/local-lab/`, so a fresh clone can train its own models without downloading the historical 8.62 GB database. The one-click run is a development check and does not replace the frozen final study.
+
+The local bridge binds only to `127.0.0.1:8765` and executes one job at a time. `npm run dev` still starts the static dashboard alone; the local experiment controls require `npm run dev:local`. If Python is installed outside `backend/.venv`, set `PAGEWISE_PYTHON` to its executable path before starting the local command.
+
+For a local production-build preview, run `npm run build` followed by `npm run preview:local`. This serves the built dashboard and the same local backend bridge together.
+
+The dashboard still loads the committed research snapshot from `public/pagewise-dashboard.json` at startup. The overview's preview controls and calculator are illustrative and must not be cited as measured results. For raw generated artifacts, the optional Streamlit viewer is documented in `backend/README.md`.
 
 The **Neural improvement** tab (`/?view=neural`) displays the separate fresh study from `public/pagewise-neural-improvement.json`: matched prediction controls, paired uncertainty, runtime latency and prefetch efficiency. See [the study roadmap](backend/NEURAL_IMPROVEMENT_PLAN.md) and [measured results](backend/NEURAL_IMPROVEMENT_RESULTS.md). Its JSON export downloads those measured results. Local frozen checkpoints and raw traces are ignored research artifacts; the original research snapshot remains separate.
 

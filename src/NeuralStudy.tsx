@@ -17,7 +17,7 @@ type Study = {
 const fixed = (n: number | null | undefined, digits = 2) => n == null || !Number.isFinite(n) ? "n/a" : n.toFixed(digits);
 const signed = (n: number) => `${n > 0 ? "+" : ""}${fixed(n)}`;
 
-export default function NeuralStudy() {
+export default function NeuralStudy({ onOpenLab }: { onOpenLab: () => void }) {
   const [study, setStudy] = useState<Study | null>(null);
   const [error, setError] = useState(false);
   const [split, setSplit] = useState("params");
@@ -41,6 +41,7 @@ export default function NeuralStudy() {
       <p className="eyebrow">FRESH CONFIRMATION / 8.62 GB SQLITE DATABASE</p>
       <h1>What improved, and where?</h1>
       <p>Validation selected the model before five new workload seeds were collected. Prediction accuracy and measured query latency are reported separately.</p>
+      <button className="local-secondary" onClick={onOpenLab}>Run neural workflows locally</button>
       <div className="neural-meta"><span>Seeds {study.seeds.join(" / ")}</span><span>All eligible transitions</span><span>Frozen weights and policy</span></div>
     </section>
     <div className="neural-tabs" role="group" aria-label="Evaluation split">

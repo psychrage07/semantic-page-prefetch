@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import NeuralStudy from "./NeuralStudy";
+import LocalLab from "./LocalLab";
 
-type View = "overview" | "traces" | "comparison" | "method" | "neural";
+type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab";
 type WorkloadId = "point" | "join" | "traversal" | "range" | "mixed";
 type ModeId = "nvme" | "sata" | "hdd";
 type PolicyId = "stock" | "sequential" | "markov" | "modelA" | "modelB" | "oracle";
@@ -455,7 +456,7 @@ function DemoNotice({ onOpenMethod, snapshot }: { onOpenMethod: () => void; snap
       <span className="notice-mark" aria-hidden="true" />
       <div className="notice-copy">
         <strong>{snapshot ? "Measured artifact loaded" : "Fixture mode"}</strong>
-        <span>{snapshot ? `Backend snapshot from ${snapshot.runtime_suites?.length ?? 0} runtime suite(s) and ${snapshot.prediction?.policies?.length ?? 0} predictor rows. Unavailable measurements are shown as n/a.` : "Illustrative browser data only. No SQLite VFS, model, or disk measurements are connected."}</span>
+        <span>{snapshot ? `Backend snapshot from ${snapshot.runtime_suites?.length ?? 0} runtime suite(s) and ${snapshot.prediction?.policies?.length ?? 0} predictor rows. Unavailable measurements are shown as n/a.` : "This preview uses illustrative browser data. Open Local experiments to run real SQLite measurements."}</span>
       </div>
       <button className="text-action" onClick={onOpenMethod}>
         Implementation boundary <Icon name="arrow" size={15} />
@@ -464,7 +465,7 @@ function DemoNotice({ onOpenMethod, snapshot }: { onOpenMethod: () => void; snap
   );
 }
 
-function MeasuredBackendPanel({ snapshot }: { snapshot: DashboardSnapshot | null }) {
+function MeasuredBackendPanel({ snapshot, local }: { snapshot: DashboardSnapshot | null; local: boolean }) {
   if (!snapshot) return null;
   const suite = measuredSuite(snapshot);
   const modelB = measuredPolicy(snapshot, "model_b");
@@ -518,7 +519,7 @@ function MeasuredBackendPanel({ snapshot }: { snapshot: DashboardSnapshot | null
           </tbody>
         </table>
       </div>
-      <p className="chart-footnote">Loaded from <code>/pagewise-dashboard.json</code>. Fixture charts remain labelled until each visualization has a measured artifact source.</p>
+      <p className="chart-footnote">Loaded from {local ? "a local experiment artifact" : <code>/pagewise-dashboard.json</code>}. Fixture controls remain illustrative; measured values come only from the loaded snapshot.</p>
     </section>
   );
 }
@@ -667,8 +668,6 @@ function ReplayControls({
   setCacheMb,
   degree,
   setDegree,
-  running,
-  progress,
   onRun,
 }: {
   workloadId: WorkloadId;
@@ -679,8 +678,6 @@ function ReplayControls({
   setCacheMb: (value: number) => void;
   degree: number;
   setDegree: (value: number) => void;
-  running: boolean;
-  progress: number;
   onRun: () => void;
 }) {
   return (
@@ -718,13 +715,12 @@ function ReplayControls({
         <Icon name="layers" size={16} />
         <span>Same fixture query order, cache size, and LRU policy across every strategy.</span>
       </div>
-      <button className="run-button" type="button" onClick={onRun} disabled={running}>
-        <Icon name={running ? "database" : "play"} size={17} />
-        <span>{running ? `Replaying fixture ${progress}%` : "Run fixture replay"}</span>
-        {!running && <span className="button-arrow"><Icon name="arrow" size={16} /></span>}
+      <button className="run-button" type="button" onClick={onRun}>
+        <Icon name="play" size={17} />
+        <span>Run a real local experiment</span>
+        <span className="button-arrow"><Icon name="arrow" size={16} /></span>
       </button>
-      {running && <div className="progress-track" aria-label={`Replay progress ${progress}%`}><span style={{ width: `${progress}%` }} /></div>}
-      <p className="run-caption">Browser-only demonstration. The delay profile is illustrative, not injected into SQLite.</p>
+      <p className="run-caption">The controls above preview the fixture. The local experiment workspace runs actual SQLite queries with its own measured settings.</p>
     </section>
   );
 }
@@ -1114,15 +1110,15 @@ function MethodPage({
         </section>
       </div>
       <section className="boundary-section">
-        <div className="boundary-heading"><span className="boundary-mark"><Icon name="database" size={19} /></span><div><p className="eyebrow">CURRENT IMPLEMENTATION BOUNDARY</p><h2>This interface is a working demo, not the database experiment.</h2></div></div>
+        <div className="boundary-heading"><span className="boundary-mark"><Icon name="database" size={19} /></span><div><p className="eyebrow">CURRENT IMPLEMENTATION BOUNDARY</p><h2>Measured runs and fixture previews are separate.</h2></div></div>
         <div className="boundary-columns">
-          <div><span className="boundary-status status-present"><Icon name="check" size={14} />Available here</span><p>Interactive fixture replay, workload and latency-profile controls, trace filtering, CSV exports, strategy comparison, ablation preview, and a break-even calculator.</p></div>
-          <div><span className="boundary-status status-pending"><span />Not connected</span><p>APSW custom VFS, dbstat page map, SQLite dataset generator, asynchronous prefetch cache, trained models or ONNX, and measured confidence intervals.</p></div>
+          <div><span className="boundary-status status-present"><Icon name="check" size={14} />Local experiments</span><p>Generate a database, trace APSW VFS reads, train models, run the bounded prefetch cache, compare policies, and inspect measured output through the local backend.</p></div>
+          <div><span className="boundary-status status-pending"><span />Illustrative controls</span><p>The overview workload, latency-profile and cache sliders preview a deterministic fixture. Start a local experiment to set real backend options and obtain new measurements.</p></div>
         </div>
-        <p className="boundary-footnote">No speedup, cache metric, latency, or accuracy displayed in this prototype should be cited as an SQLite result.</p>
+        <p className="boundary-footnote">Only values labelled as measured backend output should be cited as SQLite experiment results. Development runs are separate from the frozen final study.</p>
       </section>
       <section className="next-work-section">
-        <div><p className="eyebrow">NEXT REPRODUCIBLE MILESTONE</p><h2>Replace fixtures with one trace export.</h2><p>Implement the VFS tracer and emit a versioned event schema. Then wire those CSV/JSON results into this dashboard without changing the comparison protocol.</p></div>
+        <div><p className="eyebrow">REPRODUCIBLE LOCAL PATH</p><h2>Run and inspect fresh measurements.</h2><p>Use Local experiments for a complete development pipeline or select a specific backend command. Open its dashboard export to replace the bundled overview snapshot.</p></div>
         <div className="schema-preview"><span>trace_event.v1</span><code>query_id, offset, page_no, object_id,<br />page_type, depth, plan_node, timestamp</code></div>
       </section>
     </>
@@ -1130,19 +1126,18 @@ function MethodPage({
 }
 
 function App() {
-  const [view, setView] = useState<View>(() => new URLSearchParams(window.location.search).get("view") === "neural" ? "neural" : "overview");
+  const [view, setView] = useState<View>(() => {
+    const requested = new URLSearchParams(window.location.search).get("view");
+    return requested === "neural" || requested === "lab" ? requested : "overview";
+  });
   const [dashboardSnapshot, setDashboardSnapshot] = useState<DashboardSnapshot | null>(null);
+  const [localSnapshot, setLocalSnapshot] = useState(false);
   const [workloadId, setWorkloadId] = useState<WorkloadId>("mixed");
   const [modeId, setModeId] = useState<ModeId>("sata");
   const [cacheMb, setCacheMb] = useState(256);
   const [degree, setDegree] = useState(4);
   const [activePolicy, setActivePolicy] = useState<PolicyId>("modelB");
   const [visibleSeries, setVisibleSeries] = useState<PolicyId[]>(["stock", "markov", "modelA", "modelB"]);
-  const [running, setRunning] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [runCount, setRunCount] = useState(0);
-  const [hasRun, setHasRun] = useState(false);
-  const [lastRun, setLastRun] = useState("");
   const [traceSearch, setTraceSearch] = useState("");
   const [traceWorkload, setTraceWorkload] = useState<WorkloadId | "all">("all");
   const [traceOnlyWasted, setTraceOnlyWasted] = useState(false);
@@ -1166,28 +1161,13 @@ function App() {
     };
   }, []);
 
-  useEffect(() => {
-    if (!running) return;
-    if (progress >= 100) {
-      setRunning(false);
-      setHasRun(true);
-      setRunCount((count) => count + 1);
-      setLastRun(new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" }));
-      return;
-    }
-    const timer = window.setTimeout(() => setProgress((value) => Math.min(value + 5, 100)), 65);
-    return () => window.clearTimeout(timer);
-  }, [running, progress]);
-
   const workload = WORKLOADS[workloadId];
 
-  function runReplay() {
-    if (running) return;
-    setProgress(0);
-    setRunning(true);
-  }
-
   function exportResults() {
+    if (dashboardSnapshot) {
+      downloadFile("pagewise-measured-dashboard.json", JSON.stringify(dashboardSnapshot, null, 2), "application/json");
+      return;
+    }
     const header = "strategy,workload,miss_profile,cache_mb,prefetch_degree,p50_ms,p95_ms,cache_hit_pct,useful_prefetch_pct,wasted_prefetch_pct,top1_pct,source\n";
     const rows = POLICY_INFO.map((policy) => {
       const metric = metricFor(workloadId, modeId, cacheMb, policy.id, degree);
@@ -1204,8 +1184,8 @@ function App() {
 
   function exportTrace() {
     const header = "time,query_id,workload,page,previous_page,object,page_type,depth,plan_node,cache,predicted_page,confidence,prefetched,useful\n";
-    const rows = TRACE_EVENTS.map((event) => [event.time, event.queryId, event.workload, event.page, event.previousPage, event.object, event.pageType, event.depth, `"${event.plan.replace(/"/g, '""')}"`, event.cache, event.predictedPage, event.confidence, event.prefetched, event.useful].join(","));
-    downloadFile("pagewise-fixture-trace.csv", header + rows.join("\n"), "text/csv");
+    const rows = (dashboardSnapshot ? measuredTraceEvents(dashboardSnapshot) : TRACE_EVENTS).map((event) => [event.time, event.queryId, event.workload, event.page, event.previousPage, event.object, event.pageType, event.depth, `"${event.plan.replace(/"/g, '""')}"`, event.cache, event.predictedPage, event.confidence, event.prefetched, event.useful].join(","));
+    downloadFile(dashboardSnapshot ? "pagewise-measured-trace.csv" : "pagewise-fixture-trace.csv", header + rows.join("\n"), "text/csv");
   }
 
   function exportConfig() {
@@ -1230,6 +1210,7 @@ function App() {
     comparison: "Model comparison",
     method: "Method & scope",
     neural: "Neural improvement",
+    lab: "Local experiments",
   };
 
   return (
@@ -1246,6 +1227,7 @@ function App() {
             ["traces", "Trace explorer", "trace"],
             ["comparison", "Model comparison", "compare"],
             ["neural", "Neural improvement", "compare"],
+            ["lab", "Local experiments", "database"],
             ["method", "Method & scope", "method"],
           ] as [View, string, string][]).map(([id, label, icon]) => (
             <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}>
@@ -1258,7 +1240,7 @@ function App() {
             <span className="project-icon"><Icon name="database" size={16} /></span>
             <div><small>ACTIVE PROJECT</small><strong>page-prefetch / v0.1</strong></div>
           </div>
-          <div className="sidebar-status"><span className="status-pulse" /><div><strong>{view === "neural" ? "MEASURED STUDY" : "DEMO BUILD"}</strong><small>{view === "neural" ? "frozen confirmation" : "local fixture data"}</small></div><span className="status-code">DEV</span></div>
+          <div className="sidebar-status"><span className="status-pulse" /><div><strong>{view === "neural" ? "MEASURED STUDY" : view === "lab" ? "LOCAL BACKEND" : "DEMO BUILD"}</strong><small>{view === "neural" ? "frozen confirmation" : view === "lab" ? "real SQLite runs" : "local fixture data"}</small></div><span className="status-code">DEV</span></div>
           <div className="sidebar-meta">RESEARCH PROTOTYPE <span>V0.1</span></div>
         </div>
       </aside>
@@ -1267,23 +1249,23 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>Pagewise</span><i>/</i><strong>{pageLabels[view]}</strong></div>
           <div className="topbar-actions">
-            {hasRun && <span className="last-run">Replay {String(runCount).padStart(2, "0")} <i /> {lastRun}</span>}
-            <span className={`topbar-fixture ${dashboardSnapshot || view === "neural" ? "topbar-measured" : ""}`}><span /> {dashboardSnapshot || view === "neural" ? "MEASURED JSON" : "FIXTURE DATA"}</span>
-            <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "method" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Export study JSON" : view === "method" ? "Export config" : view === "traces" ? "Export trace" : "Export results"}</span></button>
+            <span className={`topbar-fixture ${dashboardSnapshot || view === "neural" || view === "lab" ? "topbar-measured" : ""}`}><span /> {view === "lab" ? "LOCAL BACKEND" : dashboardSnapshot || view === "neural" ? "MEASURED JSON" : "FIXTURE DATA"}</span>
+            {view !== "lab" && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "method" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Export study JSON" : view === "method" ? "Export fixture config" : view === "traces" ? "Export trace" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
           </div>
         </header>
 
         <div className="content-area" key={view}>
-          {view !== "neural" && <DemoNotice onOpenMethod={() => setView("method")} snapshot={dashboardSnapshot} />}
-          {view === "neural" && <NeuralStudy />}
+          {view !== "neural" && view !== "lab" && <DemoNotice onOpenMethod={() => setView("method")} snapshot={dashboardSnapshot} />}
+          {view === "neural" && <NeuralStudy onOpenLab={() => setView("lab")} />}
+          {view === "lab" && <LocalLab onLoadSnapshot={(payload) => { setDashboardSnapshot(payload as DashboardSnapshot); setLocalSnapshot(true); setView("overview"); }} />}
           {view === "overview" && <>
-            <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="A controlled replay console for testing whether query-plan context improves page-level prefetching, and whether inference cost erases the gain." trailing={<span className="intro-count">01 <small>research question</small></span>} />
-            <MeasuredBackendPanel snapshot={dashboardSnapshot} />
+            <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="Inspect measured backend exports, then run fresh SQLite experiments in the local workspace. Preview controls below use an illustrative fixture." trailing={<span className="intro-count">01 <small>research question</small></span>} />
+            <MeasuredBackendPanel snapshot={dashboardSnapshot} local={localSnapshot} />
             <div className="overview-grid">
               <LatencyChart workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} visible={visibleSeries} setVisible={setVisibleSeries} snapshot={dashboardSnapshot} />
-              <ReplayControls workloadId={workloadId} setWorkloadId={setWorkloadId} modeId={modeId} setModeId={setModeId} cacheMb={cacheMb} setCacheMb={setCacheMb} degree={degree} setDegree={setDegree} running={running} progress={progress} onRun={runReplay} />
+              <ReplayControls workloadId={workloadId} setWorkloadId={setWorkloadId} modeId={modeId} setModeId={setModeId} cacheMb={cacheMb} setCacheMb={setCacheMb} degree={degree} setDegree={setDegree} onRun={() => setView("lab")} />
             </div>
-            <div className="run-meta-line"><span className={`run-state-dot ${running ? "is-running" : ""}`} />{running ? `Replaying deterministic fixture ${progress}%` : hasRun ? `Fixture replay ${String(runCount).padStart(2, "0")} finished at ${lastRun}` : "Previewing deterministic fixture data"}<span className="run-meta-separator">/</span>{workload.family}<span className="run-meta-separator">/</span>{MODES[modeId].short} miss profile</div>
+            <div className="run-meta-line"><span className="run-state-dot" />Previewing deterministic fixture data<span className="run-meta-separator">/</span>{workload.family}<span className="run-meta-separator">/</span>{MODES[modeId].short} miss profile</div>
             <MetricStrip workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} snapshot={dashboardSnapshot} />
             <div className="overview-lower-grid">
               <section className="overview-results panel">
@@ -1292,7 +1274,7 @@ function App() {
                   <button className="text-action" onClick={() => setView("comparison")}>Full comparison <Icon name="arrow" size={15} /></button>
                 </div>
                 <ResultsTable workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} onSelect={setActivePolicy} snapshot={dashboardSnapshot} compact />
-                <div className="oracle-inline"><span className="oracle-mark">O</span><span>Oracle ceiling</span><strong>{formatMs(metricFor(workloadId, modeId, cacheMb, "oracle", degree).p50)}</strong><small>not a deployable predictor</small></div>
+                <div className="oracle-inline"><span className="oracle-mark">O</span><span>Oracle ceiling</span><strong>{dashboardSnapshot ? "n/a" : formatMs(metricFor(workloadId, modeId, cacheMb, "oracle", degree).p50)}</strong><small>not a deployable predictor</small></div>
               </section>
               <PredictionHeatmap workloadId={workloadId} snapshot={dashboardSnapshot} />
             </div>
@@ -1302,7 +1284,7 @@ function App() {
           {view === "traces" && <TraceExplorer workloadFilter={traceWorkload} setWorkloadFilter={setTraceWorkload} search={traceSearch} setSearch={setTraceSearch} onlyWasted={traceOnlyWasted} setOnlyWasted={setTraceOnlyWasted} selectedId={selectedTraceId} setSelectedId={setSelectedTraceId} snapshot={dashboardSnapshot} />}
           {view === "comparison" && <ComparisonPage workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} setActivePolicy={setActivePolicy} inferenceCost={inferenceCost} setInferenceCost={setInferenceCost} snapshot={dashboardSnapshot} />}
           {view === "method" && <MethodPage onExportConfig={exportConfig} />}
-          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE-PREFETCH LAB</span><span>{view === "neural" ? "Measured confirmation / tested conditions only" : "Fixture prototype / no performance claims"}</span><button onClick={() => setView("method")}>Scope & methodology</button></footer>
+          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE-PREFETCH LAB</span><span>{view === "neural" ? "Measured confirmation / tested conditions only" : view === "lab" ? "Actual local runs / development experiments" : "Fixture prototype / no performance claims"}</span><button onClick={() => setView("method")}>Scope & methodology</button></footer>
         </div>
       </main>
     </div>
