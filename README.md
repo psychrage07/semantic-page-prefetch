@@ -68,15 +68,19 @@ cd ..
 npm run dev:local
 ```
 
-Open the Vite URL shown in the terminal and select **Local experiments**. The one-click development run generates a small database, traces real reads, trains and evaluates models, runs a policy suite, and exports a measured dashboard. The command form exposes the 22 Pagewise CLI commands and 14 research-script entry points; run logs and artifacts are browsable in the same tab. Use **Show on overview** on a completed `dashboard.json` to inspect its measured output. Runs and checkpoints are saved under ignored `backend/runs/local-lab/`, so a fresh clone can train its own models without downloading the historical 8.62 GB database. The one-click run is a development check and does not replace the frozen final study.
+Open the Vite URL shown in the terminal. The main walkthrough is **Project overview → How it works → Live demonstration → Research results**. See [PRESENTATION_GUIDE.md](PRESENTATION_GUIDE.md) for a short faculty demonstration script. The live demo generates a small database, traces real reads, trains and evaluates Model A and Model B, runs a policy suite, and automatically displays its measured results. The final selected neural hybrid is reported separately in Research results. Runs and checkpoints stay under ignored `backend/runs/local-lab/`, so a fresh clone can train its own development models without downloading the historical database.
+
+The default live mode is now **Test trained hybrid**: it loads the existing selected checkpoint and compares fresh runtime with no prefetch and Markov-2 on the matching local 8.62 GB database. It verifies the frozen checkpoint/source/snapshot and never retrains. Its displayed query timings and candidate samples come from the new run; it does not recompute the saved held-out accuracy. **Build a small demo** selects the A/B training pipeline described above. The trained-mode button requires the ignored frozen model, original database, metadata and policy artifacts; it reports unavailable inputs rather than substituting a different model.
+
+**Advanced research tools** in the live demo retains the 22 CLI commands, 14 research-script entry points, run logs and artifact browser. Historical dashboards and fixture previews are under the collapsed **Research workspace** navigation.
 
 The local bridge binds only to `127.0.0.1:8765` and executes one job at a time. `npm run dev` still starts the static dashboard alone; the local experiment controls require `npm run dev:local`. If Python is installed outside `backend/.venv`, set `PAGEWISE_PYTHON` to its executable path before starting the local command.
 
 For a local production-build preview, run `npm run build` followed by `npm run preview:local`. This serves the built dashboard and the same local backend bridge together.
 
-The dashboard still loads the committed research snapshot from `public/pagewise-dashboard.json` at startup. The overview's preview controls and calculator are illustrative and must not be cited as measured results. For raw generated artifacts, the optional Streamlit viewer is documented in `backend/README.md`.
+The advanced historical dashboard loads `public/pagewise-dashboard.json`; its fixture preview controls remain illustrative. The main project overview uses only the measured final-study export. For raw generated artifacts, the optional Streamlit viewer is documented in `backend/README.md`.
 
-The **Neural improvement** tab (`/?view=neural`) displays the separate fresh study from `public/pagewise-neural-improvement.json`: matched prediction controls, paired uncertainty, runtime latency and prefetch efficiency. See [the study roadmap](backend/NEURAL_IMPROVEMENT_PLAN.md) and [measured results](backend/NEURAL_IMPROVEMENT_RESULTS.md). Its JSON export downloads those measured results. Local frozen checkpoints and raw traces are ignored research artifacts; the original research snapshot remains separate.
+The **Research results** tab (`/?view=neural`) displays the separate fresh study from `public/pagewise-neural-improvement.json`, with detailed uncertainty and diagnostics under **Full research evidence**. See [the study roadmap](backend/NEURAL_IMPROVEMENT_PLAN.md) and [measured results](backend/NEURAL_IMPROVEMENT_RESULTS.md). Its download contains the measured study. Local frozen checkpoints and raw traces are ignored research artifacts; the historical research snapshot remains separate.
 
 ## Testing
 

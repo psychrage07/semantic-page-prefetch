@@ -10,6 +10,7 @@ import argparse
 import ast
 import json
 import os
+import secrets
 import subprocess
 import sys
 import threading
@@ -189,6 +190,21 @@ def demo_steps(root: Path, queries: int) -> list[list[str]]:
     return [build_argv(command, options) for command, options in entries]
 
 
+def hybrid_steps(root: Path, queries: int, seed: int) -> tuple[list[list[str]], list[str]]:
+    from live_hybrid import order, POLICIES
+    base = ["local:trained-hybrid"]
+    steps = [[*base, "verify", "--out", str(root), "--queries", str(queries), "--seed", str(seed)]]
+    labels = ["Verify trained model and database"]
+    for number, workload_seed in enumerate([seed, seed + 1], start=1):
+        for policy in order(workload_seed):
+            steps.append([*base, "run", "--out", str(root), "--queries", str(queries),
+                          "--seed", str(workload_seed), "--policy", policy])
+            labels.append(f"{POLICIES[policy]} · workload {number}/2")
+    steps.append([*base, "summarize", "--out", str(root)])
+    labels.append("Open measured comparison")
+    return steps, labels
+
+
 def _job_public(job: dict) -> dict:
     return {key: value for key, value in job.items() if key not in ("steps", "process")}
 
@@ -223,7 +239,9 @@ def _run(job: dict) -> None:
                     job["step"] = index + 1
                     job["command"] = argv[0]
                     _save(job)
-                if argv[0].startswith("script:"):
+                if argv[0] == "local:trained-hybrid":
+                    command = [sys.executable, "-u", str(BACKEND / "live_hybrid.py"), *argv[1:]]
+                elif argv[0].startswith("script:"):
                     _, script, *subcommand = argv[0].split(":")
                     command = [sys.executable, "-u", str(BACKEND / "scripts" / f"{script}.py"), *subcommand, *argv[1:]]
                 else:
@@ -265,13 +283,28 @@ def start_job(payload: dict) -> dict:
         if any(job["status"] in ("running", "cancelling") for job in JOBS.values()):
             raise RuntimeError("Another local experiment is running")
         job_id = uuid.uuid4().hex[:12]
-        if payload.get("preset") == "demo":
+        preset = payload.get("preset")
+        labels = None
+        result_file = None
+        if preset == "demo":
             queries = int(payload.get("queries", 100))
             if not 1 <= queries <= 2000:
                 raise ValueError("Demo queries must be between 1 and 2000")
             root = LAB / job_id
             root.mkdir(parents=True, exist_ok=False)
             steps = demo_steps(root, queries)
+            result_file = "dashboard.json"
+        elif preset == "trained-hybrid":
+            from live_hybrid import assets
+            assets()  # Fail before a job starts if the matching local artifacts are absent.
+            queries = int(payload.get("queries", 20))
+            if not 10 <= queries <= 100:
+                raise ValueError("Trained-hybrid queries must be between 10 and 100 per policy/seed")
+            root = LAB / job_id
+            root.mkdir(parents=True, exist_ok=False)
+            seed = 1_000_000_000 + secrets.randbelow(1_000_000_000)
+            steps, labels = hybrid_steps(root, queries, seed)
+            result_file = "hybrid-live.json"
         else:
             options = payload.get("options", {})
             steps = [build_argv(payload.get("command"), options)]
@@ -284,7 +317,7 @@ def start_job(payload: dict) -> dict:
         job = {"id": job_id, "status": "running", "step": 0, "total_steps": len(steps),
                "command": "", "started_at": datetime.now(timezone.utc).isoformat(), "finished_at": None,
                "root": str(root.relative_to(BACKEND)), "log": str((LAB / f"{job_id}.log").relative_to(BACKEND)),
-               "steps": steps}
+               "steps": steps, "preset": preset, "stage_labels": labels, "result_file": result_file}
         JOBS[job_id] = job
         LAB.mkdir(parents=True, exist_ok=True)
         _save(job)
@@ -322,6 +355,12 @@ class Handler(BaseHTTPRequestHandler):
             query = parse_qs(path.query)
             if path.path == "/api/health":
                 return self._reply({"ok": True, "python": sys.executable, "backend": str(BACKEND)})
+            if path.path == "/api/trained-hybrid":
+                from live_hybrid import assets
+                try:
+                    return self._reply(assets())
+                except (ValueError, OSError) as exc:
+                    return self._reply({"available": False, "reason": str(exc)})
             if path.path == "/api/commands":
                 return self._reply({"commands": list(COMMANDS.values())})
             if path.path == "/api/jobs":

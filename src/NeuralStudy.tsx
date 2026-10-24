@@ -1,96 +1,39 @@
 import { useEffect, useState } from "react";
+import StudyDetails from "./StudyDetails";
 
-type Metric = { top1_macro_pct: number; top1_micro_pct: number; top5_micro_pct: number; candidate_recall_pct?: number; queries: number; transitions: number };
-type Comparison = { mean: number; ci95_low: number; ci95_high: number; holm_adjusted_p: number; holm_decision: boolean };
-type RuntimeMetric = { mean_ms: number; p95_ms: number; queries: number };
-type Study = {
-  schema_version: number; study: string; evidence: string; seeds: number[]; labels: Record<string, string>;
-  models: Record<string, string>; splits: Record<string, Record<string, Metric>>;
-  development: Record<string, Record<string, { validation_macro_top1_pct: number; config: { variant: string } }>>;
-  comparisons: Record<string, Comparison>; runtime_comparisons: Record<string, Comparison>;
-  runtime: { label: string; summary: Record<string, RuntimeMetric> }[];
-  runtime_telemetry: { scenario: string; pages_prefetched: number; useful_prefetch_pct: number | null; useful_pages_per_demand_request_pct: number | null; inference_ms_per_scored_job: number | null; queue_wait_ms_per_dequeued_job: number | null; stale_jobs_dropped: number }[];
-  scope: string[]; source_sha256: string;
-  simulator: { decision: string; cells: number; reopened_cells: number; validation_cells: number; validation_failures: number; scope: string; bound: string };
-};
-
-const fixed = (n: number | null | undefined, digits = 2) => n == null || !Number.isFinite(n) ? "n/a" : n.toFixed(digits);
-const signed = (n: number) => `${n > 0 ? "+" : ""}${fixed(n)}`;
+type Metric = { top1_macro_pct: number; queries: number; transitions: number; candidate_recall_pct?: number };
+type Study = { seeds: number[]; splits: Record<string, Record<string, Metric>>; runtime: { label: string; summary: Record<string, { mean_ms: number }> }[] };
+const fixed = (value: number | undefined) => value == null || !Number.isFinite(value) ? "n/a" : value.toFixed(2);
+const names: Record<string, string> = { a_bce: "Model A · page history", b_bce: "Model B · history + semantics", b_structured_listwise: "Model B · structured training", b2_bce: "B2 · semantics + Markov statistics", markov1: "Markov-1", markov2: "Markov-2", selected: "Selected neural hybrid" };
+const scenarios: Record<string, string> = { "k1-delay0.0": "No injected delay · 1 channel", "k1-delay0.2": "Injected delay · 1 channel", "k4-delay0.2": "Injected delay · 4 channels", "k16-delay0.2": "Injected delay · 16 channels" };
 
 export default function NeuralStudy({ onOpenLab }: { onOpenLab: () => void }) {
   const [study, setStudy] = useState<Study | null>(null);
   const [error, setError] = useState(false);
   const [split, setSplit] = useState("params");
+  const [details, setDetails] = useState(false);
   useEffect(() => {
     const controller = new AbortController();
-    fetch("/pagewise-neural-improvement.json", { cache: "no-store", signal: controller.signal })
-      .then(response => { if (!response.ok) throw new Error("Unavailable"); return response.json(); })
-      .then((payload: Study) => { if (payload.schema_version !== 1 || !payload.splits || !payload.runtime) throw new Error("Invalid study"); setStudy(payload); })
+    fetch("/pagewise-neural-improvement.json", { signal: controller.signal })
+      .then(response => { if (!response.ok) throw new Error(); return response.json(); })
+      .then((data: Study) => { if (!data.splits?.params?.selected || !Array.isArray(data.runtime)) throw new Error(); setStudy(data); })
       .catch(() => { if (!controller.signal.aborted) setError(true); });
     return () => controller.abort();
   }, []);
-
-  if (!study) return <section className="panel neural-empty"><h1>Neural improvement study</h1><p role="status">{error ? "The measured study export is unavailable. Generate public/pagewise-neural-improvement.json from the completed study artifacts." : "Loading measured study…"}</p></section>;
+  if (!study) return <div className="faculty-page"><div className="faculty-title"><h1>Research results</h1><p role="status">{error ? "The saved study could not be loaded. No example results are substituted." : "Loading measured study…"}</p></div></div>;
   const rows = study.splits[split];
-  const delta = rows.selected.top1_macro_pct - rows.b2_bce.top1_macro_pct;
-  const comparisons = Object.entries(study.comparisons).filter(([name]) => name.startsWith(`${split}:`));
-  const b3Validation = Object.values(study.development[split]).filter(row => row.config.variant === "b3").map(row => row.validation_macro_top1_pct);
-
-  return <div className="neural-study">
-    <section className="neural-intro">
-      <p className="eyebrow">FRESH CONFIRMATION / 8.62 GB SQLITE DATABASE</p>
-      <h1>What improved, and where?</h1>
-      <p>Validation selected the model before five new workload seeds were collected. Prediction accuracy and measured query latency are reported separately.</p>
-      <button className="local-secondary" onClick={onOpenLab}>Run neural workflows locally</button>
-      <div className="neural-meta"><span>Seeds {study.seeds.join(" / ")}</span><span>All eligible transitions</span><span>Frozen weights and policy</span></div>
+  const delta = rows.selected.top1_macro_pct - rows.markov2.top1_macro_pct;
+  return <div className="faculty-page">
+    <div className="faculty-title"><p className="eyebrow">FINAL STUDY · SAVED MEASUREMENTS</p><h1>What did we achieve?</h1><p>Prediction improved on familiar query types. The measured runtime tests did not establish faster queries.</p><div className="study-provenance"><span>8.62 GB SQLite database</span><span>{study.seeds.length} new workload seeds</span><span>Models selected before final testing</span></div></div>
+    <section className="faculty-section"><div className="faculty-section-heading"><div><p className="eyebrow">QUESTION 1</p><h2>Can we predict the next page?</h2></div><div className="faculty-segment" role="group" aria-label="Evaluation split"><button aria-pressed={split === "params"} onClick={() => setSplit("params")}>New query values</button><button aria-pressed={split === "templates"} onClick={() => setSplit("templates")}>New query types</button></div></div>
+      <p className="faculty-description">{split === "params" ? "The query types are familiar, but their parameter values are held out. Our selected policy combines a Markov prior with a semantic neural correction." : "The SQL query templates are held out. The selected policy for this split is an epoch-zero Markov fallback; it has no learned neural gain."}</p>
+      <div className="faculty-metrics"><article><span>{split === "params" ? "Our neural hybrid" : "Selected fallback policy"}</span><strong>{fixed(rows.selected.top1_macro_pct)}<small>%</small></strong><p>Query-average Top-1 accuracy</p></article><article><span>Difference from Markov-2</span><strong>{delta > 0 ? "+" : ""}{fixed(delta)}<small> pp</small></strong><p>Percentage-point difference on this split</p></article><article><span>Held-out evaluation</span><strong>{rows.selected.queries}</strong><p>{rows.selected.transitions.toLocaleString()} observed page transitions</p></article></div>
+      <div className="faculty-table-wrap"><table className="faculty-table"><thead><tr><th>Predictor</th><th>Query-average Top-1 accuracy ↑</th></tr></thead><tbody>{Object.entries(names).map(([key, label]) => <tr key={key} className={key === "selected" ? "highlight" : ""}><th scope="row">{key === "selected" && split === "templates" ? "Selected fallback policy" : label}</th><td>{fixed(rows[key]?.top1_macro_pct)}%</td></tr>)}</tbody></table></div>
+      <p className="faculty-source">Top-1 checks the first predicted page. Each query receives equal weight. B3 was screened on development data and was not selected for final testing.</p>
     </section>
-    <div className="neural-tabs" role="group" aria-label="Evaluation split">
-      <button aria-pressed={split === "params"} onClick={() => setSplit("params")}>Unseen parameters</button>
-      <button aria-pressed={split === "templates"} onClick={() => setSplit("templates")}>Unseen templates</button>
-    </div>
-    <div className="neural-cards">
-      <article className="panel"><p className="eyebrow">SELECTED / MACRO TOP-1</p><strong>{fixed(rows.selected.top1_macro_pct)}<small>%</small></strong><p>{study.models[split]}</p></article>
-      <article className="panel"><p className="eyebrow">CHANGE FROM B2 BINARY LOSS</p><strong>{signed(delta)}<small> pp</small></strong><p>Same candidate generator and split</p></article>
-      <article className="panel"><p className="eyebrow">CANDIDATE RECALL / MICRO</p><strong>{fixed(rows.selected.candidate_recall_pct)}<small>%</small></strong><p>Missing targets count as errors</p></article>
-    </div>
-    <section className="panel neural-panel">
-      <div className="panel-heading"><div><p className="eyebrow">OFFLINE PREDICTION / HIGHER IS BETTER</p><h2>Matched neural controls and native Markov baselines</h2></div></div>
-      <p>Macro Top-1 gives each query equal weight. Micro Top-1 and Top-5 count page transitions. {rows.selected.queries} held-out queries / {rows.selected.transitions.toLocaleString()} transitions.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Predictor</th><th>Macro Top-1</th><th>Micro Top-1</th><th>Micro Top-5</th><th>Candidate recall</th></tr></thead>
-        <tbody>{Object.entries(rows).map(([name, row]) => <tr key={name} className={name === "selected" ? "neural-selected" : ""}><th scope="row">{study.labels[name] ?? name}</th><td>{fixed(row.top1_macro_pct)}%</td><td>{fixed(row.top1_micro_pct)}%</td><td>{fixed(row.top5_micro_pct)}%</td><td>{row.candidate_recall_pct === undefined ? "n/a" : `${fixed(row.candidate_recall_pct)}%`}</td></tr>)}</tbody>
-      </table></div>
-      <p className="neural-note">Model B is the semantic neural model. B2 adds Markov statistics; the selected parameter model learns a semantic neural correction to a Markov prior. An epoch-zero template checkpoint is a Markov fallback with no learned neural gain.</p>
-      <p>B3 adds query parameters. Its best screened hybrid reached {fixed(Math.max(...b3Validation))}% on sampled validation data for this split. It was not promoted to final testing; this validation score is separate from the fresh-test table.</p>
-    </section>
-    <section className="panel neural-panel">
-      <p className="eyebrow">PAIRED UNCERTAINTY / FIVE WORKLOAD SEEDS</p><h2>Does the gain survive correction?</h2>
-      <p>Positive effects favor the named candidate. Intervals resample workload seeds and paired queries. Holm adjustment covers the full frozen family across both splits.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Comparison</th><th>Delta pp</th><th>95% interval</th><th>Holm p</th><th>Favorable support</th></tr></thead><tbody>
-        {comparisons.map(([name, row]) => <tr key={name}><th scope="row">{name.split(":")[1].replaceAll("_vs_", " vs ")}</th><td>{signed(row.mean)}</td><td>[{fixed(row.ci95_low)}, {fixed(row.ci95_high)}]</td><td>{fixed(row.holm_adjusted_p, 4)}</td><td>{row.holm_decision ? "Supported" : "Not established"}</td></tr>)}
-      </tbody></table></div>
-    </section>
-    <section className="panel neural-panel">
-      <p className="eyebrow">REAL APSW QUERY EXECUTION / LOWER IS BETTER</p><h2>End-to-end latency</h2>
-      <p>Cache: 512 pages. One prefetch worker. The frozen neural policy predicts every fourth miss at confidence ≥ 0.7, degree 1. Each row contains 300 query executions across five seeds.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Scenario</th><th>No prefetch mean</th><th>Markov-2 mean</th><th>Neural mean</th><th>Neural p95</th></tr></thead><tbody>
-        {study.runtime.map(scenario => <tr key={scenario.label}><th scope="row">{scenario.label}</th><td>{fixed(scenario.summary.none.mean_ms)} ms</td><td>{fixed(scenario.summary.markov2.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.p95_ms)} ms</td></tr>)}
-      </tbody></table></div>
-      <p className="neural-note">k is an abstract service-channel count. Delay labels are requested artificial delays; the 0.2 ms sleep calibration achieved 0.5234 ms on this host. These measurements do not establish physical disk performance.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Neural vs no prefetch</th><th>Delta ms</th><th>95% interval</th><th>Holm p</th><th>Speedup support</th></tr></thead><tbody>
-        {Object.entries(study.runtime_comparisons).filter(([name]) => name.includes("selected_ranker")).map(([name, row]) => <tr key={name}><th scope="row">{name.split(":")[0]}</th><td>{signed(row.mean)}</td><td>[{fixed(row.ci95_low)}, {fixed(row.ci95_high)}]</td><td>{fixed(row.holm_adjusted_p, 4)}</td><td>{row.holm_decision ? "Supported" : "Not established"}</td></tr>)}
-      </tbody></table></div>
-      <h2>Prefetch efficiency and worker cost</h2>
-      <div className="neural-table-wrap"><table><thead><tr><th>Scenario</th><th>Pages prefetched</th><th>Useful rate</th><th>Scoring ms/job</th><th>Queue wait ms/job</th><th>Stale jobs dropped</th></tr></thead><tbody>
-        {study.runtime_telemetry.map(row => <tr key={row.scenario}><th scope="row">{row.scenario}</th><td>{row.pages_prefetched.toLocaleString()}</td><td>{fixed(row.useful_prefetch_pct)}%</td><td>{fixed(row.inference_ms_per_scored_job, 3)}</td><td>{fixed(row.queue_wait_ms_per_dequeued_job, 3)}</td><td>{row.stale_jobs_dropped.toLocaleString()}</td></tr>)}
-      </tbody></table></div>
-      <p className="neural-note">Useful rate divides useful pages by pages prefetched. Scoring includes candidate generation and features, excluding jobs dropped before scoring; queue wait includes all dequeued jobs. These counters help diagnose overhead and waste.</p>
-    </section>
-    <section className="panel neural-panel">
-      <p className="eyebrow">MODEL SCOPE / EXPLORATORY SIMULATION</p><h2>Read the limits with the results</h2>
-      <p>The simulator explored {study.simulator.cells} cells and reopened {study.simulator.reopened_cells} restricted-family configurations. {study.simulator.validation_failures} of {study.simulator.validation_cells} zero-delay validation cells missed the 15% error target.</p>
-      <p>{study.simulator.scope} Its headroom is a {study.simulator.bound}.</p>
-      <ul>{study.scope.map(note => <li key={note}>{note}</li>)}</ul>
-      <p className="neural-note">Frozen predictor source: <code>{study.source_sha256.slice(0, 16)}</code>. Download the study JSON for exact values and paired effects.</p>
-    </section>
+    <section className="faculty-section"><p className="eyebrow">QUESTION 2</p><h2>Did prefetching make queries faster?</h2><p className="faculty-description">Lower query time is better. The selected neural policy was slower than no prefetching in every measured scenario below.</p><div className="faculty-table-wrap"><table className="faculty-table"><thead><tr><th>Runtime scenario</th><th>No prefetch</th><th>Markov-2</th><th>Neural hybrid</th></tr></thead><tbody>{study.runtime.map(row => <tr key={row.label}><th scope="row">{scenarios[row.label] ?? row.label}</th><td>{fixed(row.summary.none.mean_ms)} ms</td><td>{fixed(row.summary.markov2.mean_ms)} ms</td><td>{fixed(row.summary.selected_ranker.mean_ms)} ms</td></tr>)}</tbody></table></div><p className="faculty-source">Mean query time · 300 query executions per policy/scenario · 512-page cache · one prefetch worker. Delayed scenarios request an artificial 0.2 ms delay; channels are abstract service slots, not hardware labels.</p></section>
+    <div className="faculty-findings"><article><span className="finding-label">WHAT WORKED</span><h3>Semantics added useful signal.</h3><p>The neural hybrid improved held-out-parameter prediction accuracy over Markov-2. Detailed paired uncertainty is available below.</p></article><article><span className="finding-label">WHAT STILL LIMITS IT</span><h3>Overhead and unseen query types.</h3><p>Predictions cost CPU time, some prefetched pages are unused, and candidate coverage is poor for unfamiliar query types.</p></article></div>
+    <details className="faculty-advanced" onToggle={event => setDetails(event.currentTarget.open)}><summary><span>Full research evidence</span><small>Top-5, candidate recall, uncertainty and runtime diagnostics</small></summary>{details && <StudyDetails onOpenLab={onOpenLab} />}</details>
+    <section className="presentation-next"><div><h2>Show the pipeline live.</h2><p>Execute the trained selected hybrid and inspect newly measured query times.</p></div><button className="faculty-primary" onClick={onOpenLab}>Open live demonstration →</button></section>
   </div>;
 }

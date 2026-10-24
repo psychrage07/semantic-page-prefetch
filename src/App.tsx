@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import NeuralStudy from "./NeuralStudy";
 import LocalLab from "./LocalLab";
+import ProjectOverview from "./ProjectOverview";
+import HowItWorks from "./HowItWorks";
 
-type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab";
+type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab" | "preview" | "protocol";
 type WorkloadId = "point" | "join" | "traversal" | "range" | "mixed";
 type ModeId = "nvme" | "sata" | "hdd";
 type PolicyId = "stock" | "sequential" | "markov" | "modelA" | "modelB" | "oracle";
@@ -1126,10 +1128,17 @@ function MethodPage({
 }
 
 function App() {
-  const [view, setView] = useState<View>(() => {
+  const [view, updateView] = useState<View>(() => {
     const requested = new URLSearchParams(window.location.search).get("view");
-    return requested === "neural" || requested === "lab" ? requested : "overview";
+    return ["overview", "traces", "comparison", "method", "neural", "lab", "preview", "protocol"].includes(requested ?? "") ? requested as View : "overview";
   });
+  function setView(next: View) {
+    updateView(next);
+    const url = new URL(window.location.href);
+    url.searchParams.set("view", next);
+    window.history.replaceState(null, "", url);
+    window.scrollTo({ top: 0 });
+  }
   const [dashboardSnapshot, setDashboardSnapshot] = useState<DashboardSnapshot | null>(null);
   const [localSnapshot, setLocalSnapshot] = useState(false);
   const [workloadId, setWorkloadId] = useState<WorkloadId>("mixed");
@@ -1205,12 +1214,14 @@ function App() {
   }
 
   const pageLabels: Record<View, string> = {
-    overview: "Overview",
-    traces: "Trace explorer",
-    comparison: "Model comparison",
-    method: "Method & scope",
-    neural: "Neural improvement",
-    lab: "Local experiments",
+    overview: "Project overview",
+    traces: "Page-read inspector",
+    comparison: "Detailed comparison",
+    method: "How it works",
+    neural: "Research results",
+    lab: "Live demonstration",
+    preview: "Historical dashboard & fixture preview",
+    protocol: "Research protocol",
   };
 
   return (
@@ -1220,28 +1231,29 @@ function App() {
           <LogoMark />
           <div><strong>pagewise</strong><span>SQLITE RESEARCH LAB</span></div>
         </div>
-        <div className="nav-caption">WORKSPACE</div>
+        <div className="nav-caption">PROJECT WALKTHROUGH</div>
         <nav className="primary-nav" aria-label="Primary navigation">
           {([
-            ["overview", "Overview", "overview"],
-            ["traces", "Trace explorer", "trace"],
-            ["comparison", "Model comparison", "compare"],
-            ["neural", "Neural improvement", "compare"],
-            ["lab", "Local experiments", "database"],
-            ["method", "Method & scope", "method"],
+            ["overview", "Project overview", "overview"],
+            ["method", "How it works", "method"],
+            ["lab", "Live demonstration", "play"],
+            ["neural", "Research results", "compare"],
           ] as [View, string, string][]).map(([id, label, icon]) => (
             <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}>
               <Icon name={icon} size={18} /><span>{label}</span>{view === id && <i className="nav-indicator" />}
             </button>
           ))}
         </nav>
+        <details className="sidebar-advanced"><summary>Research workspace</summary><nav className="primary-nav" aria-label="Advanced research navigation">{([
+          ["traces", "Page-read inspector", "trace"], ["comparison", "Detailed comparison", "compare"], ["preview", "Historical dashboard", "overview"], ["protocol", "Protocol & fixtures", "method"],
+        ] as [View, string, string][]).map(([id, label, icon]) => <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}><Icon name={icon} size={18} /><span>{label}</span></button>)}</nav></details>
         <div className="sidebar-bottom">
           <div className="sidebar-project">
             <span className="project-icon"><Icon name="database" size={16} /></span>
-            <div><small>ACTIVE PROJECT</small><strong>page-prefetch / v0.1</strong></div>
+            <div><small>PAGEWISE</small><strong>Semantics-aware SQLite prefetching</strong></div>
           </div>
-          <div className="sidebar-status"><span className="status-pulse" /><div><strong>{view === "neural" ? "MEASURED STUDY" : view === "lab" ? "LOCAL BACKEND" : "DEMO BUILD"}</strong><small>{view === "neural" ? "frozen confirmation" : view === "lab" ? "real SQLite runs" : "local fixture data"}</small></div><span className="status-code">DEV</span></div>
-          <div className="sidebar-meta">RESEARCH PROTOTYPE <span>V0.1</span></div>
+          <div className="sidebar-status"><div><strong>LOCAL EDITION</strong><small>Research evidence & live experiments</small></div></div>
+          <div className="sidebar-meta">DATABASE SYSTEMS PROJECT</div>
         </div>
       </aside>
 
@@ -1249,16 +1261,18 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>Pagewise</span><i>/</i><strong>{pageLabels[view]}</strong></div>
           <div className="topbar-actions">
-            <span className={`topbar-fixture ${dashboardSnapshot || view === "neural" || view === "lab" ? "topbar-measured" : ""}`}><span /> {view === "lab" ? "LOCAL BACKEND" : dashboardSnapshot || view === "neural" ? "MEASURED JSON" : "FIXTURE DATA"}</span>
-            {view !== "lab" && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "method" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Export study JSON" : view === "method" ? "Export fixture config" : view === "traces" ? "Export trace" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
+            {!["overview", "method", "lab"].includes(view) && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "protocol" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Download study" : view === "protocol" ? "Export fixture config" : view === "traces" ? "Export trace" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
+            {view !== "lab" && <button className="header-demo-button" onClick={() => setView("lab")}>Live demo <Icon name="arrow" size={14} /></button>}
           </div>
         </header>
 
         <div className="content-area" key={view}>
-          {view !== "neural" && view !== "lab" && <DemoNotice onOpenMethod={() => setView("method")} snapshot={dashboardSnapshot} />}
+          {["traces", "comparison", "preview", "protocol"].includes(view) && <DemoNotice onOpenMethod={() => setView("protocol")} snapshot={dashboardSnapshot} />}
+          {view === "overview" && <ProjectOverview onDemo={() => setView("lab")} onResults={() => setView("neural")} onMethod={() => setView("method")} />}
+          {view === "method" && <HowItWorks onDemo={() => setView("lab")} />}
           {view === "neural" && <NeuralStudy onOpenLab={() => setView("lab")} />}
-          {view === "lab" && <LocalLab onLoadSnapshot={(payload) => { setDashboardSnapshot(payload as DashboardSnapshot); setLocalSnapshot(true); setView("overview"); }} />}
-          {view === "overview" && <>
+          {view === "lab" && <LocalLab onLoadSnapshot={(payload) => { setDashboardSnapshot(payload as DashboardSnapshot); setLocalSnapshot(true); setView("traces"); }} />}
+          {view === "preview" && <>
             <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="Inspect measured backend exports, then run fresh SQLite experiments in the local workspace. Preview controls below use an illustrative fixture." trailing={<span className="intro-count">01 <small>research question</small></span>} />
             <MeasuredBackendPanel snapshot={dashboardSnapshot} local={localSnapshot} />
             <div className="overview-grid">
@@ -1283,8 +1297,8 @@ function App() {
 
           {view === "traces" && <TraceExplorer workloadFilter={traceWorkload} setWorkloadFilter={setTraceWorkload} search={traceSearch} setSearch={setTraceSearch} onlyWasted={traceOnlyWasted} setOnlyWasted={setTraceOnlyWasted} selectedId={selectedTraceId} setSelectedId={setSelectedTraceId} snapshot={dashboardSnapshot} />}
           {view === "comparison" && <ComparisonPage workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} setActivePolicy={setActivePolicy} inferenceCost={inferenceCost} setInferenceCost={setInferenceCost} snapshot={dashboardSnapshot} />}
-          {view === "method" && <MethodPage onExportConfig={exportConfig} />}
-          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE-PREFETCH LAB</span><span>{view === "neural" ? "Measured confirmation / tested conditions only" : view === "lab" ? "Actual local runs / development experiments" : "Fixture prototype / no performance claims"}</span><button onClick={() => setView("method")}>Scope & methodology</button></footer>
+          {view === "protocol" && <MethodPage onExportConfig={exportConfig} />}
+          <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE PREFETCHING</span><span>Measured results describe the tested conditions.</span><button onClick={() => setView("method")}>How it works</button></footer>
         </div>
       </main>
     </div>
