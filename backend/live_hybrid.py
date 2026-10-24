@@ -119,6 +119,7 @@ def summarize(out: Path):
     workload_ids: dict[int, str] = {}
     for policy, label in POLICIES.items():
         times, jobs, prefetched, useful = [], 0, 0, 0
+        demand, hits, unused, inference_ms = 0, 0, 0, 0.0
         for seed in plan["seeds"]:
             directory = out / f"seed-{seed}" / policy
             fingerprint = sha(directory / "workload.jsonl")
@@ -134,6 +135,10 @@ def summarize(out: Path):
             jobs += stats.get("completed_jobs", 0)
             prefetched += stats.get("pages_prefetched", 0)
             useful += stats.get("useful_prefetches", 0)
+            demand += stats.get("demand_requests", 0)
+            hits += stats.get("cache_hits", 0)
+            unused += stats.get("total_wasted_prefetches", 0)
+            inference_ms += stats.get("inference_ms_total", 0.0)
             if policy == "model_ranker" and len(samples) < 3:
                 with (directory / "predictions.jsonl").open(encoding="utf-8") as handle:
                     for line in handle:
@@ -146,17 +151,22 @@ def summarize(out: Path):
                                 break
         rows.append({"policy": policy, "label": label, "queries": len(times), "mean_ms": statistics.mean(times),
                      "median_ms": statistics.median(times), "scored_jobs": jobs,
-                     "pages_prefetched": prefetched, "useful_pages": useful})
-    result = {"schema_version": 1, "artifact_type": "trained_hybrid_live", **plan,
+                     "pages_prefetched": prefetched, "useful_pages": useful,
+                     "cache_hit_pct": hits / demand * 100 if demand else None,
+                     "unused_pages": unused, "inference_ms_per_job": inference_ms / jobs if jobs else None})
+    evaluation = json.loads((out / "evaluation.json").read_text(encoding="utf-8"))
+    if evaluation["checkpoint_sha256"] != plan["checkpoint_sha256"]:
+        raise ValueError("Evaluation and runtime checkpoints differ")
+    result = {"schema_version": 1, "artifact_type": "trained_hybrid_live", **plan, "evaluation": evaluation,
               "rows": rows, "prediction_samples": samples, "workloads_paired": True,
-              "accuracy_note": "This test measures fresh runtime and actual inference. It does not recompute the saved 47.74% held-out accuracy."}
+              "accuracy_note": "Fresh prediction accuracy is evaluated separately from runtime. Workload values may overlap training; this does not replace the saved held-out study."}
     (out / "hybrid-live.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2), flush=True)
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=["verify", "run", "summarize"])
+    parser.add_argument("stage", choices=["verify", "run", "evaluate", "summarize"])
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--queries", type=int, default=20)
     parser.add_argument("--seed", type=int, default=20261024)
@@ -168,6 +178,9 @@ def main():
         verify(args.out, args.queries, args.seed)
     elif args.stage == "run":
         run_policy(args.out, args.policy, args.seed, args.queries)
+    elif args.stage == "evaluate":
+        from live_evaluation import evaluate
+        evaluate(args.out)
     else:
         summarize(args.out)
 

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
+import SemanticEvaluation from "./SemanticEvaluation";
+import type { TrainedHybridSnapshot } from "./selectedModel";
 
 type Metric = { top1_macro_pct: number };
 type Summary = { splits: { params: Record<string, Metric> }; seeds: number[] };
 
-export default function ProjectOverview({ onDemo, onResults, onMethod }: { onDemo: () => void; onResults: () => void; onMethod: () => void }) {
+export default function ProjectOverview({ onDemo, onResults, onMethod, selectedResult }: { onDemo: () => void; onResults: () => void; onMethod: () => void; selectedResult?: TrainedHybridSnapshot }) {
   const [study, setStudy] = useState<Summary | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -26,6 +28,7 @@ export default function ProjectOverview({ onDemo, onResults, onMethod }: { onDem
       <div className="project-model"><span className="eyebrow">OUR SELECTED APPROACH</span><h2>Neural–Markov hybrid</h2><p>Combine familiar page patterns with database context.</p><div className="model-input"><span>01</span><div><strong>Page history</strong><small>Which pages did the query read?</small></div></div><div className="model-input"><span>02</span><div><strong>Database semantics</strong><small>Which table, index, page type and query plan?</small></div></div><div className="model-output">Markov prior + learned neural correction</div><small className="model-caption">Selected on validation data before final testing.</small></div>
     </section>
     <div className="presentation-flow" aria-label="System flow">{[["1", "Observe", "Trace actual SQLite page reads"], ["2", "Predict", "Rank candidate next pages"], ["3", "Prefetch", "Read early into a bounded cache"], ["4", "Measure", "Compare accuracy and query time"]].map(([step, title, text]) => <div key={step}><span>{step}</span><div><strong>{title}</strong><small>{text}</small></div></div>)}</div>
+    <SemanticEvaluation result={selectedResult} compact onDemo={onDemo} />
     <section className="faculty-section"><div className="faculty-section-heading"><div><p className="eyebrow">FINAL STUDY · SAVED MEASUREMENTS</p><h2>Did the predictions improve?</h2></div><button className="faculty-link" onClick={onResults}>Explore the evidence →</button></div><p className="faculty-description">Results below use new query values on the same tested database and query types. Each query contributes equally to Top-1 accuracy.</p>
       {failed ? <p role="status" className="faculty-callout">The study export could not be loaded. No example scores are substituted.</p> : <><div className="faculty-metrics"><article><span>Our neural hybrid</span><strong>{fixed(score("selected"))}<small>%</small></strong><p>Query-average Top-1 accuracy</p></article><article><span>Markov-2 baseline</span><strong>{fixed(score("markov2"))}<small>%</small></strong><p>The strongest native Markov baseline tested</p></article><article><span>Improvement over Markov-2</span><strong>{improvement == null ? "—" : `+${fixed(improvement)}`}<small> pp</small></strong><p>Percentage points, on this evaluation</p></article></div>
       <div className="faculty-bars" aria-label="Measured query-average Top-1 accuracy">{models.map(([key, label, description]) => <div className={`faculty-bar-row ${key === "selected" ? "selected" : ""}`} key={key}><div><strong>{label}</strong><small>{description}</small></div><div className="faculty-bar-track"><span style={{ width: `${score(key) ?? 0}%` }} /></div><b>{fixed(score(key))}%</b></div>)}</div><p className="faculty-source">8.62 GB database · {study?.seeds.length ?? "—"} held-out workload seeds · {study ? "Measured study from 20 October 2026" : "Loading measured results…"}</p></>}

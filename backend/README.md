@@ -292,3 +292,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\run_smoke.ps1 -Que
 ```
 
 The script generates a small database, verifies actual VFS tracing by collecting a workload, builds query-level page sequences, trains both MLPs, and evaluates held-out predictions. It stores everything under a timestamped `backend/runs/smoke-*` folder. This is a pipeline smoke test, not the final performance experiment. The script deliberately stops if APSW or PyTorch is unavailable.
+
+The default **Test trained hybrid** mode uses `live_hybrid.py` and `live_evaluation.py` to execute the frozen semantic checkpoint on the matching local database. Its nine stages include fresh next-page evaluation, separate from timed runtime. `/api/selected-results` serves the latest completed evaluated run to the frontend. Evaluation counts all eligible transitions, including targets missing from the candidate set; no fitting or tuning occurs. Fresh workload values may overlap training, so these scores remain separate from the final held-out study.
+
+The **Interactive workspace** at `/?view=workspace` exposes read-only SQL, actual schema/row browsing, live VFS traces, worker predictions/counters and measured SQL benchmarks through `workspace.py`. It reuses the existing tracing, models and runtime, the local job queue and cancellation. Every execution saves isolated artifacts. See [the workspace guide](../WORKSPACE_GUIDE.md) for APIs, measurement scope and the browser walkthrough.

@@ -744,3 +744,73 @@ button:focus-visible, input:focus-visible, select:focus-visible { outline: 2px s
 .hybrid-predictions > div { display: grid; gap: 7px; background: #f4f7ef; border: 1px solid #e1e8d8; border-radius: 6px; padding: 13px; margin-top: 8px; overflow-wrap: anywhere; }
 .hybrid-predictions span { color: #7b8a6d; font-size: 11px; }
 .hybrid-predictions strong { font-size: 12px; font-weight: 500; line-height: 1.7; }
+.semantic-inspector { margin-top: 24px; }
+.semantic-inspector label { display: flex; flex-direction: column; gap: 8px; font-size: 13px; color: var(--text-muted, #667368); }
+.semantic-inspector select { max-width: 100%; padding: 12px; border: 1px solid #dce3db; border-radius: 10px; background: white; color: #26382d; }
+.semantic-inspector .faculty-callout { margin: 16px 0; line-height: 1.9; overflow-wrap: anywhere; }
+.semantic-evaluation .demo-log { overflow-wrap: anywhere; }
+.interactive-workspace { max-width: 1700px; }
+.interactive-workspace select, .interactive-workspace input:not([type="checkbox"]) { border: 1px solid #d9e0d7; border-radius: 8px; background: #fff; color: #233d30; padding: 10px; min-width: 0; width: 100%; font-size: 12px; }
+.interactive-workspace label { display: grid; gap: 7px; color: #647667; font-size: 11px; font-weight: 600; }
+.workspace-database-bar { display: grid; grid-template-columns: minmax(200px, 1.5fr) minmax(150px, 1fr) auto; gap: 18px; align-items: center; }
+.workspace-database-bar .workspace-note { grid-column: 1 / -1; margin: 0; }
+.workspace-scope { display: grid; gap: 6px; font-size: 11px; line-height: 1.5; color: #73816f; }
+.workspace-scope strong { letter-spacing: .08em; color: #46674e; }
+.workspace-layout { display: grid; grid-template-columns: minmax(0, 1fr) 350px; gap: 22px; align-items: start; }
+.workspace-main { min-width: 0; display: grid; gap: 22px; }
+.sql-panel .faculty-section-heading { margin-bottom: 15px; align-items: start; }
+.sql-panel .faculty-section-heading > select { width: 210px; max-width: 100%; }
+.sql-editor { display: block; resize: vertical; width: 100%; min-height: 190px; border: 1px solid #2e493c; border-radius: 10px; padding: 17px; background: #172d24; color: #e4f2df; font: 13px/1.8 Consolas, "Courier New", monospace; tab-size: 2; }
+.sql-controls { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.4fr) 88px 88px; gap: 12px; margin: 17px 0; }
+.sql-actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.workspace-options { margin: 18px 0 12px; font-size: 12px; color: #58705b; }
+.workspace-options summary { cursor: pointer; }
+.workspace-checks { display: flex; flex-wrap: wrap; gap: 12px 18px; padding-top: 15px; }
+.workspace-checks label, .terminal-follow { display: flex; align-items: center; gap: 7px; }
+.workspace-note { font-size: 11px; line-height: 1.8; color: #75816f; overflow-wrap: anywhere; margin: 12px 0; }
+.workspace-output { padding: 0; overflow: hidden; }
+.workspace-output [role="tabpanel"] { padding: 24px; min-width: 0; }
+.workspace-tabs { display: flex; gap: 3px; overflow-x: auto; border-bottom: 1px solid #e2e7dd; padding: 12px; background: #f9faf7; }
+.workspace-tabs button { white-space: nowrap; padding: 10px 12px; border: 0; border-radius: 7px; background: transparent; color: #71816b; font-size: 11px; cursor: pointer; }
+.workspace-tabs button[aria-selected="true"] { background: #e6eddf; color: #325b3c; font-weight: 700; }
+.workspace-empty { padding: 25px 0; font-size: 13px; line-height: 1.8; color: #7c8878; }
+.workspace-table { overflow: auto; max-height: 520px; max-width: 100%; margin: 15px 0; }
+.workspace-table .faculty-table { min-width: 100%; font-size: 11px; }
+.workspace-table .faculty-table td { text-align: left; max-width: 320px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.workspace-table .faculty-table th { position: sticky; top: 0; background: #f1f4ed; z-index: 1; text-align: left; white-space: nowrap; }
+.workspace-db-info, .workspace-run-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; font-size: 11px; line-height: 1.6; color: #527052; }
+.workspace-db-info a { color: #315a3e; text-decoration: underline; }
+.workspace-run-bar { justify-content: space-between; margin-bottom: 15px; }
+.workspace-run-bar label { max-width: 250px; }
+.workspace-schema { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; margin: 15px 0; }
+.workspace-schema button { display: grid; text-align: left; gap: 7px; padding: 14px; border: 1px solid #dde5d8; border-radius: 8px; background: #fafbf8; color: #406048; cursor: pointer; overflow-wrap: anywhere; }
+.workspace-schema button.selected { border-color: #809b70; background: #edf2e5; }
+.workspace-schema small { font-size: 10px; color: #809075; }
+.workspace-plan { padding: 15px; border-radius: 8px; background: #eef2e9; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.8 Consolas, monospace; color: #486143; }
+.workspace-output h3 { font-size: 16px; color: #34513d; margin-top: 20px; }
+.workspace-prediction { border: 1px solid #e0e6da; border-radius: 9px; padding: 15px; margin: 12px 0; font-size: 11px; color: #61775b; }
+.workspace-prediction > div:first-child { display: flex; gap: 10px; justify-content: space-between; flex-wrap: wrap; }
+.workspace-prediction p { margin: 12px 0; overflow-wrap: anywhere; line-height: 1.7; }
+.workspace-counters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 18px 0; }
+.workspace-counters article { display: grid; gap: 10px; padding: 18px 12px; border: 1px solid #e0e6d9; border-radius: 8px; background: #f9fbf5; }
+.workspace-counters span { color: #7b8871; font-size: 10px; }
+.workspace-counters strong { color: #466b3e; font-size: 27px; }
+.workspace-artifacts { display: grid; gap: 5px; margin: 15px 0; }
+.workspace-artifacts a { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 12px; border: 1px solid #e0e6d9; border-radius: 7px; font-size: 11px; color: #45663e; overflow-wrap: anywhere; }
+.workspace-artifacts a span { white-space: nowrap; color: #8a937f; font-size: 10px; }
+.workspace-notes { padding-left: 18px; font-size: 11px; line-height: 1.9; color: #78866d; margin-top: 15px; }
+.workspace-terminal { position: sticky; top: 88px; min-width: 0; border: 1px solid #2e4739; border-radius: 14px; background: #14251e; color: #c1d4bd; overflow: hidden; }
+.terminal-heading { display: flex; align-items: center; justify-content: space-between; padding: 17px; background: #1e3428; border-bottom: 1px solid #34503c; font-size: 11px; }
+.terminal-heading > div { display: flex; align-items: center; gap: 7px; }
+.terminal-heading > span { color: #9db38f; font-size: 10px; text-transform: uppercase; }
+.terminal-dot { width: 7px; height: 7px; border-radius: 100%; background: #94b76d; }
+.workspace-terminal .terminal-history { padding: 15px 15px 0; color: #9db18f; }
+.workspace-terminal select { background: #20372b; border-color: #3c5540; color: #d0dfc3; font-size: 10px; }
+.terminal-meta { padding: 12px 15px; font-size: 10px; line-height: 1.6; color: #7f9676; overflow-wrap: anywhere; border-bottom: 1px solid #2e4431; }
+.workspace-log { padding: 17px; height: 510px; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font: 11px/1.9 Consolas, "Courier New", monospace; color: #c6deb7; margin: 0; }
+.workspace-terminal .terminal-follow { display: flex; padding: 12px 15px; color: #a1b695; border-top: 1px solid #2e4431; }
+.terminal-footnote { font-size: 10px; line-height: 1.8; padding: 0 15px 15px; color: #7e9575; }
+.interactive-workspace button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 1400px) { .workspace-layout { grid-template-columns: minmax(0, 1fr) 300px; } .sql-controls { grid-template-columns: 1fr 1fr; } .workspace-database-bar { grid-template-columns: 1fr 1fr; } .workspace-database-bar > button { justify-self: start; } .workspace-schema { grid-template-columns: 1fr 1fr; } }
+@media (max-width: 1100px) { .workspace-layout { grid-template-columns: minmax(0, 1fr); } .workspace-terminal { position: static; } .workspace-log { height: 340px; } }
+@media (max-width: 650px) { .workspace-database-bar { grid-template-columns: 1fr; } .workspace-output [role="tabpanel"] { padding: 15px; } .workspace-counters { grid-template-columns: 1fr 1fr; } .workspace-schema { grid-template-columns: 1fr 1fr; } .sql-panel .faculty-section-heading > select { width: 100%; } .workspace-artifacts a { align-items: start; flex-direction: column; gap: 6px; } .workspace-db-info { gap: 7px 14px; } }

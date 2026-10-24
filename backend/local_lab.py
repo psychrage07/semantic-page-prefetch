@@ -15,10 +15,11 @@ import subprocess
 import sys
 import threading
 import uuid
+import mimetypes
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlsplit
+from urllib.parse import parse_qs, urlsplit, quote
 
 BACKEND = Path(__file__).resolve().parent
 REPO = BACKEND.parent
@@ -200,6 +201,8 @@ def hybrid_steps(root: Path, queries: int, seed: int) -> tuple[list[list[str]], 
             steps.append([*base, "run", "--out", str(root), "--queries", str(queries),
                           "--seed", str(workload_seed), "--policy", policy])
             labels.append(f"{POLICIES[policy]} · workload {number}/2")
+    steps.append([*base, "evaluate", "--out", str(root)])
+    labels.append("Evaluate semantic predictions against actual next pages")
     steps.append([*base, "summarize", "--out", str(root)])
     labels.append("Open measured comparison")
     return steps, labels
@@ -207,6 +210,18 @@ def hybrid_steps(root: Path, queries: int, seed: int) -> tuple[list[list[str]], 
 
 def _job_public(job: dict) -> dict:
     return {key: value for key, value in job.items() if key not in ("steps", "process")}
+
+
+def latest_selected_result() -> dict:
+    completed = sorted((job for job in JOBS.values() if job.get("preset") == "trained-hybrid"
+                        and job["status"] == "completed"), key=lambda job: job["started_at"], reverse=True)
+    for job in completed:
+        path = safe_path(str(Path(job["root"]) / "hybrid-live.json"))
+        if path.is_file():
+            result = json.loads(path.read_text(encoding="utf-8"))
+            if result.get("evaluation"):
+                return {"available": True, "job_id": job["id"], "started_at": job["started_at"], "result": result}
+    return {"available": False, "reason": "Run Test trained hybrid to calculate fresh semantic prediction scores."}
 
 
 def _save(job: dict) -> None:
@@ -241,6 +256,8 @@ def _run(job: dict) -> None:
                     _save(job)
                 if argv[0] == "local:trained-hybrid":
                     command = [sys.executable, "-u", str(BACKEND / "live_hybrid.py"), *argv[1:]]
+                elif argv[0] == "local:workspace":
+                    command = [sys.executable, "-u", str(BACKEND / "workspace.py"), *argv[1:]]
                 elif argv[0].startswith("script:"):
                     _, script, *subcommand = argv[0].split(":")
                     command = [sys.executable, "-u", str(BACKEND / "scripts" / f"{script}.py"), *subcommand, *argv[1:]]
@@ -250,6 +267,7 @@ def _run(job: dict) -> None:
                 log.flush()
                 with subprocess.Popen(command, cwd=BACKEND,
                                       stdout=log, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                      env={**os.environ, "PYTHONIOENCODING": "utf-8"},
                                       start_new_session=os.name != "nt",
                                       creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0) as proc:
                     with LOCK:
@@ -305,6 +323,15 @@ def start_job(payload: dict) -> dict:
             seed = 1_000_000_000 + secrets.randbelow(1_000_000_000)
             steps, labels = hybrid_steps(root, queries, seed)
             result_file = "hybrid-live.json"
+        elif preset == "workspace":
+            from workspace import validate_request
+            request = validate_request(payload)
+            root = LAB / job_id
+            root.mkdir(parents=True, exist_ok=False)
+            (root / "request.json").write_text(json.dumps(request, indent=2), encoding="utf-8")
+            steps = [["local:workspace", "--out", str(root)]]
+            labels = ["Execute SQL through Pagewise VFS and runtime"]
+            result_file = "workspace-result.json"
         else:
             options = payload.get("options", {})
             steps = [build_argv(payload.get("command"), options)]
@@ -353,6 +380,31 @@ class Handler(BaseHTTPRequestHandler):
         try:
             path = urlsplit(self.path)
             query = parse_qs(path.query)
+            if path.path == "/api/workspace/databases":
+                from workspace import catalog
+                return self._reply(catalog())
+            if path.path == "/api/workspace/schema":
+                from workspace import schema
+                return self._reply(schema(query.get("database", [""])[0], query.get("table", [None])[0]))
+            if path.path == "/api/workspace/run":
+                from workspace import run_view
+                job = JOBS.get(query.get("id", [""])[0])
+                if not job or job.get("preset") != "workspace":
+                    return self._reply({"error": "Interactive run not found"}, 404)
+                return self._reply(run_view(safe_path(job["root"]), query.get("policy", [None])[0]))
+            if path.path == "/api/download":
+                file = safe_path(query.get("path", [""])[0])
+                if not file.is_file() or file.suffix.lower() not in {".sqlite", ".json", ".jsonl", ".csv", ".md", ".txt", ".log"}:
+                    return self._reply({"error": "Artifact not found"}, 404)
+                self.send_response(200)
+                self.send_header("Content-Type", mimetypes.guess_type(file.name)[0] or "application/octet-stream")
+                self.send_header("Content-Length", str(file.stat().st_size))
+                self.send_header("Content-Disposition", "attachment; filename*=UTF-8''" + quote(file.name))
+                self.end_headers()
+                with file.open("rb") as handle:
+                    while chunk := handle.read(65536):
+                        self.wfile.write(chunk)
+                return
             if path.path == "/api/health":
                 return self._reply({"ok": True, "python": sys.executable, "backend": str(BACKEND)})
             if path.path == "/api/trained-hybrid":
@@ -361,6 +413,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._reply(assets())
                 except (ValueError, OSError) as exc:
                     return self._reply({"available": False, "reason": str(exc)})
+            if path.path == "/api/selected-results":
+                return self._reply(latest_selected_result())
             if path.path == "/api/commands":
                 return self._reply({"commands": list(COMMANDS.values())})
             if path.path == "/api/jobs":

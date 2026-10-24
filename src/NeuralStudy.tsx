@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import StudyDetails from "./StudyDetails";
+import SemanticEvaluation from "./SemanticEvaluation";
+import type { TrainedHybridSnapshot } from "./selectedModel";
 
 type Metric = { top1_macro_pct: number; queries: number; transitions: number; candidate_recall_pct?: number };
 type Study = { seeds: number[]; splits: Record<string, Record<string, Metric>>; runtime: { label: string; summary: Record<string, { mean_ms: number }> }[] };
@@ -7,7 +9,7 @@ const fixed = (value: number | undefined) => value == null || !Number.isFinite(v
 const names: Record<string, string> = { a_bce: "Model A · page history", b_bce: "Model B · history + semantics", b_structured_listwise: "Model B · structured training", b2_bce: "B2 · semantics + Markov statistics", markov1: "Markov-1", markov2: "Markov-2", selected: "Selected neural hybrid" };
 const scenarios: Record<string, string> = { "k1-delay0.0": "No injected delay · 1 channel", "k1-delay0.2": "Injected delay · 1 channel", "k4-delay0.2": "Injected delay · 4 channels", "k16-delay0.2": "Injected delay · 16 channels" };
 
-export default function NeuralStudy({ onOpenLab }: { onOpenLab: () => void }) {
+export default function NeuralStudy({ onOpenLab, selectedResult }: { onOpenLab: () => void; selectedResult?: TrainedHybridSnapshot }) {
   const [study, setStudy] = useState<Study | null>(null);
   const [error, setError] = useState(false);
   const [split, setSplit] = useState("params");
@@ -24,6 +26,7 @@ export default function NeuralStudy({ onOpenLab }: { onOpenLab: () => void }) {
   const rows = study.splits[split];
   const delta = rows.selected.top1_macro_pct - rows.markov2.top1_macro_pct;
   return <div className="faculty-page">
+    <SemanticEvaluation result={selectedResult} onDemo={onOpenLab} />
     <div className="faculty-title"><p className="eyebrow">FINAL STUDY · SAVED MEASUREMENTS</p><h1>What did we achieve?</h1><p>Prediction improved on familiar query types. The measured runtime tests did not establish faster queries.</p><div className="study-provenance"><span>8.62 GB SQLite database</span><span>{study.seeds.length} new workload seeds</span><span>Models selected before final testing</span></div></div>
     <section className="faculty-section"><div className="faculty-section-heading"><div><p className="eyebrow">QUESTION 1</p><h2>Can we predict the next page?</h2></div><div className="faculty-segment" role="group" aria-label="Evaluation split"><button aria-pressed={split === "params"} onClick={() => setSplit("params")}>New query values</button><button aria-pressed={split === "templates"} onClick={() => setSplit("templates")}>New query types</button></div></div>
       <p className="faculty-description">{split === "params" ? "The query types are familiar, but their parameter values are held out. Our selected policy combines a Markov prior with a semantic neural correction." : "The SQL query templates are held out. The selected policy for this split is an epoch-zero Markov fallback; it has no learned neural gain."}</p>

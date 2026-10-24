@@ -3,8 +3,12 @@ import NeuralStudy from "./NeuralStudy";
 import LocalLab from "./LocalLab";
 import ProjectOverview from "./ProjectOverview";
 import HowItWorks from "./HowItWorks";
+import SemanticEvaluation from "./SemanticEvaluation";
+import TrainedHybridResults from "./TrainedHybridResults";
+import { useSelectedRun } from "./selectedModel";
+import InteractiveWorkspace from "./InteractiveWorkspace";
 
-type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab" | "preview" | "protocol";
+type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab" | "workspace" | "preview" | "protocol";
 type WorkloadId = "point" | "join" | "traversal" | "range" | "mixed";
 type ModeId = "nvme" | "sata" | "hdd";
 type PolicyId = "stock" | "sequential" | "markov" | "modelA" | "modelB" | "oracle";
@@ -1128,9 +1132,10 @@ function MethodPage({
 }
 
 function App() {
+  const selectedRun = useSelectedRun();
   const [view, updateView] = useState<View>(() => {
     const requested = new URLSearchParams(window.location.search).get("view");
-    return ["overview", "traces", "comparison", "method", "neural", "lab", "preview", "protocol"].includes(requested ?? "") ? requested as View : "overview";
+    return ["overview", "traces", "comparison", "method", "neural", "lab", "workspace", "preview", "protocol"].includes(requested ?? "") ? requested as View : "overview";
   });
   function setView(next: View) {
     updateView(next);
@@ -1192,6 +1197,10 @@ function App() {
   }
 
   function exportTrace() {
+    if (!localSnapshot && selectedRun.result?.evaluation) {
+      downloadFile("pagewise-semantic-prediction-samples.json", JSON.stringify(selectedRun.result.evaluation.samples, null, 2), "application/json");
+      return;
+    }
     const header = "time,query_id,workload,page,previous_page,object,page_type,depth,plan_node,cache,predicted_page,confidence,prefetched,useful\n";
     const rows = (dashboardSnapshot ? measuredTraceEvents(dashboardSnapshot) : TRACE_EVENTS).map((event) => [event.time, event.queryId, event.workload, event.page, event.previousPage, event.object, event.pageType, event.depth, `"${event.plan.replace(/"/g, '""')}"`, event.cache, event.predictedPage, event.confidence, event.prefetched, event.useful].join(","));
     downloadFile(dashboardSnapshot ? "pagewise-measured-trace.csv" : "pagewise-fixture-trace.csv", header + rows.join("\n"), "text/csv");
@@ -1220,6 +1229,7 @@ function App() {
     method: "How it works",
     neural: "Research results",
     lab: "Live demonstration",
+    workspace: "Interactive workspace",
     preview: "Historical dashboard & fixture preview",
     protocol: "Research protocol",
   };
@@ -1237,6 +1247,7 @@ function App() {
             ["overview", "Project overview", "overview"],
             ["method", "How it works", "method"],
             ["lab", "Live demonstration", "play"],
+            ["workspace", "Interactive workspace", "database"],
             ["neural", "Research results", "compare"],
           ] as [View, string, string][]).map(([id, label, icon]) => (
             <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}>
@@ -1261,16 +1272,17 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>Pagewise</span><i>/</i><strong>{pageLabels[view]}</strong></div>
           <div className="topbar-actions">
-            {!["overview", "method", "lab"].includes(view) && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "protocol" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Download study" : view === "protocol" ? "Export fixture config" : view === "traces" ? "Export trace" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
+            {!["overview", "method", "lab", "workspace", "comparison"].includes(view) && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "protocol" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Download saved study" : view === "protocol" ? "Export fixture config" : view === "traces" ? localSnapshot ? "Export read sample" : "Export prediction sample" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
             {view !== "lab" && <button className="header-demo-button" onClick={() => setView("lab")}>Live demo <Icon name="arrow" size={14} /></button>}
           </div>
         </header>
 
         <div className="content-area" key={view}>
-          {["traces", "comparison", "preview", "protocol"].includes(view) && <DemoNotice onOpenMethod={() => setView("protocol")} snapshot={dashboardSnapshot} />}
-          {view === "overview" && <ProjectOverview onDemo={() => setView("lab")} onResults={() => setView("neural")} onMethod={() => setView("method")} />}
+          {["preview", "protocol"].includes(view) && <DemoNotice onOpenMethod={() => setView("protocol")} snapshot={dashboardSnapshot} />}
+          {view === "overview" && <ProjectOverview selectedResult={selectedRun.result} onDemo={() => setView("lab")} onResults={() => setView("neural")} onMethod={() => setView("method")} />}
           {view === "method" && <HowItWorks onDemo={() => setView("lab")} />}
-          {view === "neural" && <NeuralStudy onOpenLab={() => setView("lab")} />}
+          {view === "workspace" && <InteractiveWorkspace />}
+          {view === "neural" && <NeuralStudy selectedResult={selectedRun.result} onOpenLab={() => setView("lab")} />}
           {view === "lab" && <LocalLab onLoadSnapshot={(payload) => { setDashboardSnapshot(payload as DashboardSnapshot); setLocalSnapshot(true); setView("traces"); }} />}
           {view === "preview" && <>
             <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="Inspect measured backend exports, then run fresh SQLite experiments in the local workspace. Preview controls below use an illustrative fixture." trailing={<span className="intro-count">01 <small>research question</small></span>} />
@@ -1295,8 +1307,8 @@ function App() {
             <div className="overview-endnote"><span>READ THE RESULT CAREFULLY</span><p>Model B is not guaranteed to win. The range-scan control in this fixture favors sequential prediction, and sample numbers are not measured SQLite output.</p><button className="text-action" onClick={() => setView("method")}>Read method & scope <Icon name="arrow" size={15} /></button></div>
           </>}
 
-          {view === "traces" && <TraceExplorer workloadFilter={traceWorkload} setWorkloadFilter={setTraceWorkload} search={traceSearch} setSearch={setTraceSearch} onlyWasted={traceOnlyWasted} setOnlyWasted={setTraceOnlyWasted} selectedId={selectedTraceId} setSelectedId={setSelectedTraceId} snapshot={dashboardSnapshot} />}
-          {view === "comparison" && <ComparisonPage workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} setActivePolicy={setActivePolicy} inferenceCost={inferenceCost} setInferenceCost={setInferenceCost} snapshot={dashboardSnapshot} />}
+          {view === "traces" && <div className="faculty-page"><div className="faculty-title"><p className="eyebrow">SELECTED SEMANTIC MODEL</p><h1>Page prediction inspector</h1><p>Inspect the exact history, semantic page metadata, model ranking and observed next page.</p></div><SemanticEvaluation result={selectedRun.result} inspector onDemo={() => setView("lab")} /><details className="faculty-advanced" open={localSnapshot || undefined}><summary>Earlier A/B dashboard read samples</summary><TraceExplorer workloadFilter={traceWorkload} setWorkloadFilter={setTraceWorkload} search={traceSearch} setSearch={setTraceSearch} onlyWasted={traceOnlyWasted} setOnlyWasted={setTraceOnlyWasted} selectedId={selectedTraceId} setSelectedId={setSelectedTraceId} snapshot={dashboardSnapshot} /></details></div>}
+          {view === "comparison" && <div className="faculty-page"><div className="faculty-title"><p className="eyebrow">ACTUAL SELECTED MODEL OUTPUT</p><h1>Prediction and runtime comparison</h1><p>{selectedRun.started_at ? `Latest evaluated local run: ${new Date(selectedRun.started_at).toLocaleString()} · ${selectedRun.job_id}` : "Complete a trained-hybrid evaluation to populate this page."}</p></div><SemanticEvaluation result={selectedRun.result} onDemo={() => setView("lab")} />{selectedRun.result && <TrainedHybridResults result={selectedRun.result} showEvaluation={false} />}<details className="faculty-advanced"><summary>Earlier A/B dashboard comparison and fixture calculators</summary><ComparisonPage workloadId={workloadId} modeId={modeId} cacheMb={cacheMb} degree={degree} activePolicy={activePolicy} setActivePolicy={setActivePolicy} inferenceCost={inferenceCost} setInferenceCost={setInferenceCost} snapshot={dashboardSnapshot} /></details></div>}
           {view === "protocol" && <MethodPage onExportConfig={exportConfig} />}
           <footer className="page-footer"><span>PAGEWISE / SQLITE PAGE PREFETCHING</span><span>Measured results describe the tested conditions.</span><button onClick={() => setView("method")}>How it works</button></footer>
         </div>
