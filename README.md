@@ -97,3 +97,5 @@ The VFS integration test is skipped when APSW is unavailable. Run `pagewise chec
 ## Recommended first backend check
 
 After extracting the project, open PowerShell in `backend`, create/activate a Python 3.12 virtual environment, install `-e ".[test]"`, and run `python -m pagewise.cli check-env`. Then run `pytest -q` and `./scripts/run_smoke.ps1 -Queries 150`. The VFS test must pass on your experiment machine before treating any page trace or prefetch result as validated.
+
+Prediction accuracy is the primary dashboard comparison. Live models and small demos show Top-1/Top-5 cards; interactive SQL computes fresh accuracy from actual traces after execution. Runtime values remain in expandable details and downloads. See the accuracy-reporting section in [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) for weighting, interactive sampling and evaluation scope.

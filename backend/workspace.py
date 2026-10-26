@@ -364,12 +364,16 @@ def run(out: Path):
         after = {"bytes": item["db"].stat().st_size, "mtime_ns": item["db"].stat().st_mtime_ns}
         if before != after:
             raise RuntimeError("Database identity changed during this read-only run")
+        state["phase"] = "evaluating_accuracy"
+        write_json(out / "state.json", state)
+        from workspace_evaluation import evaluate
+        evaluation = evaluate(out, request, item, order)
         hashes = {row["result_sha256"] for result in results for row in result["measurements"]}
         sql_ordered = bool(re.search(r"\border\s+by\b", request["sql"], re.I))
         # SQLite does not promise row order without ORDER BY; disclose rather
         # than claim mismatches are necessarily wrong query results.
         result = {"artifact_type": "pagewise_workspace", "schema_version": 1, "request": request, "database": before,
-                  "database_unchanged": True, "results": results, "order": order,
+                  "database_unchanged": True, "results": results, "order": order, "evaluation": evaluation,
                   "identical_row_order_and_values": len(hashes) == 1, "has_order_by": sql_ordered,
                   "checkpoint_sha256": item.get("evidence", {}).get("checkpoint_sha256"),
                   "notes": ["VFS xRead events are not proof of physical disk I/O.",

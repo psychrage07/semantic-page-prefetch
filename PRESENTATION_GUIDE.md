@@ -42,3 +42,5 @@ Use **Full research evidence** only for questions about Top-5, candidate recall,
 ## Interactive SQL and terminal walkthrough
 
 Open `/?view=workspace` for the database explorer, SQL editor, live page reads, next-page predictions, prefetch monitor, SQL benchmark and real Python terminal output. Build a fresh small demo, select a table, load a query template, run it and inspect the tabs. Download actual SQLite/CSV/JSON/JSONL artifacts under Files. The explicit research database option uses the matching frozen neural checkpoint and saves new outputs separately. See [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) for the complete walkthrough and measurement scope.
+
+The main result cards now report prediction accuracy. In the workspace, Compare models calculates Top-1/Top-5 from that run's actual page trace; its scoring/sampling scope is printed below the table. Timing and prefetch-cost details are expandable. Better prediction accuracy is the demonstrated improvement; runtime measurements have not established a query speedup.

@@ -80,6 +80,18 @@ def test_actual_sql_benchmark_preserves_database_and_writes_artifacts(generated_
     assert result["database_unchanged"] and result["identical_row_order_and_values"]
     assert hashlib.sha256(db.read_bytes()).hexdigest() == before
     assert {row["policy"] for row in result["results"]} == {"none", "markov2", "model_b"}
+    accuracy = result["evaluation"]
+    assert accuracy["available"]
+    assert accuracy["reference_policy"] == "none"
+    assert set(accuracy["policies"]) == {"model_b", "markov1", "markov2"}
+    assert accuracy["scored_transitions"] > 0
+    assert accuracy["scored_transitions"] <= accuracy["eligible_transitions"]
+    for metric in accuracy["policies"].values():
+        assert metric["queries"] == 3
+        assert metric["transitions"] == accuracy["scored_transitions"]
+        assert 0 <= metric["top1_micro_pct"] <= metric["top5_micro_pct"] <= 100
+    assert (out / "prediction-accuracy.json").is_file()
+    assert (out / "prediction-accuracy.csv").is_file()
     for row in result["results"]:
         assert len(row["measurements"]) == 3
         assert all(event["rows"] == 120 for event in row["measurements"])
@@ -106,3 +118,25 @@ def test_result_cap_is_explicit_and_real_values_are_exported(generated_demo, tmp
     assert result["preview"] == [[1], [2], [3]]
     assert result["measurements"][0]["truncated"] is True
     assert result["measurements"][0]["rows"] == 3
+
+
+def test_accuracy_sampling_is_shared_reproducible_and_covers_query_span():
+    from workspace_evaluation import positions
+    assert positions(1) == []
+    assert positions(5) == [1, 2, 3, 4]
+    sampled = positions(2001)
+    assert len(sampled) == len(set(sampled)) == 512
+    assert sampled == sorted(sampled) == positions(2001)
+    assert sampled[0] == 1 and sampled[-1] == 2000
+
+
+def test_constant_query_does_not_invent_prediction_accuracy(generated_demo, tmp_path, monkeypatch):
+    lab, root = generated_demo
+    monkeypatch.setattr(workspace, "LAB", lab)
+    request = workspace.validate_request({"database": root.name, "sql": "SELECT 42", "policies": ["none"]})
+    workspace.write_json(tmp_path / "request.json", request)
+    workspace.run(tmp_path)
+    result = json.loads((tmp_path / "workspace-result.json").read_text(encoding="utf-8"))
+    assert result["results"][0]["preview"] == [[42]]
+    assert result["evaluation"]["available"] is False
+    assert result["evaluation"]["policies"] == {}

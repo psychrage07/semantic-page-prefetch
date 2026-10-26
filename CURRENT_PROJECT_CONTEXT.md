@@ -1,5 +1,7 @@
 # Pagewise: current context and complete frontend explanation
 
+**26 October 2026 update:** reporting now leads with measured Top-1/Top-5 prediction accuracy across the trained demo, small demo, research and workspace comparison pages. Timing and cost tables remain in expandable details and complete exports; the live terminal/workspace remain visible. Interactive SQL adds actual offline prediction evaluation through `backend/workspace_evaluation.py`, on a shared reference trace with up to 512 evenly spaced positions per query (clearly disclosed; all transitions scored for shorter queries). Existing models, frozen source and historical results are unchanged.
+
 Verified against the local source and artifacts on 24 October 2026 (Asia/Kolkata).
 
 **Update later on 24 October:** the default Live demonstration mode now executes the actual trained selected neural hybrid. The earlier small A/B pipeline remains under **Build a small demo**. The following sections on its seven stages and 100-query example describe that small mode, not the selected-model test.

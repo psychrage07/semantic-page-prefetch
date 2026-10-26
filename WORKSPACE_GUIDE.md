@@ -15,11 +15,11 @@ Only optional controls are collapsed under **More options**: query values, model
 1. Click **Create small demo**. This invokes the existing seven-stage CLI pipeline: generate SQLite, trace actual queries, build sequences, train A/B models, evaluate, benchmark and export. The terminal shows captured Python stdout/stderr. Every build has a new run ID and database file.
 2. In **Database**, select a table. Browse its actual schema, columns, primary keys, indexes, page size/count and up to 25 rows. **Download SQLite file** downloads the generated database.
 3. Load an existing workload query, or enter read-only SQL. Supply `?` parameters as a JSON array. Choose a prediction policy, repetition count and result-row limit. Click **Run query**.
-4. **SQL results** shows returned rows and the actual `EXPLAIN QUERY PLAN`. The browser previews up to 100 rows; CSV contains rows up to the configured cap. Long browser cells use bounded previews with original lengths; BLOB values show byte length and a 64-byte hex preview.
+4. **SQL results** shows returned rows and the actual `EXPLAIN QUERY PLAN`. The browser previews up to 100 rows; CSV contains rows up to the configured cap. Prediction accuracy appears in the result summary after evaluation. Long browser cells use bounded previews with original lengths; BLOB values show byte length and a 64-byte hex preview.
 5. **Page reads** shows the latest persisted APSW VFS `xRead` events: query ID, page range, bytes, duration, cache state and plan class. It refreshes during execution; events can arrive in batches. Fast queries can finish before the next poll.
 6. **Predictions** shows actual background jobs, observed history, ranked candidates, scores, queue/inference times and runtime actions. Empty output means no prediction jobs were recorded. Ranking scores are not measured correctness percentages.
 7. **Prefetch monitor** shows real demand/cache/prediction/prefetch counters and recorded uses. A useful entry was fetched early and later served from the Pagewise cache. Correct predictions alone do not guarantee useful or faster execution.
-8. Choose **Models to compare**, then click **Compare models**. Each policy runs the same SQL, parameters, result cap and repetitions with a fresh Pagewise cache. Order is randomized and recorded. Results report measured mean/median query time and row counts, without assuming prefetch wins.
+8. Choose **Models to compare**, then click **Compare models**. Each policy runs the same SQL, parameters, result cap and repetitions with a fresh Pagewise cache. Order is randomized and recorded. The main results report measured next-page Top-1/Top-5 accuracy on the same reference trace. Mean/median query times remain under Timing and execution details.
 9. **Files** downloads real rows, timing CSVs, traces, predictions, counters, plans, requests, benchmark CSV and combined JSON. Reopen earlier work from **Local run**, including after restarting the service.
 
 ## Separate database/model scopes
@@ -72,3 +72,13 @@ model/                         # run-local metadata/model copies
 - `GET /api/download?path=<artifact-path>`: real file download.
 
 Only known generated databases and the explicit matching research snapshot are selectable. Jobs run one at a time and the API remains on loopback.
+
+## Accuracy-first reporting (26 October 2026)
+
+Main cards and comparison tables report measured prediction accuracy. Trained-hybrid pages use their existing query-average Top-1 headline and transition-average Top-5, with explicit weighting labels. The small-demo page uses transition-average Top-1 and Top-5. Timings remain in expandable sections and original downloads. The live terminal remains visible and continues showing unmodified Python output, including timing diagnostics.
+
+Interactive SQL now runs a separate offline accuracy evaluation after all timed policy executions. It uses the no-prefetch trace when available, otherwise the first executed policy trace. The matching semantic model, Markov-1, Markov-2 and requested predictor policies score the same observed transitions. No-prefetch is a runtime reference and gets no invented prediction accuracy.
+
+For responsive interactive use, each query contributes all transitions up to 512; longer sequences use 512 deterministic, evenly spaced positions covering the query span. The UI and exports state whether sampling occurred and show scored/eligible counts. All predictors use the same sampled positions. Missing target candidates count as errors. Queries with no eligible transitions show an unavailable message. These custom queries may overlap training and remain separate from the held-out research study.
+
+New artifacts are `prediction-accuracy.json`, `prediction-accuracy.csv` and `accuracy-sequences.jsonl`. The combined `workspace-result.json` contains the evaluation alongside unchanged runtime results. Main workspace accuracy columns weight each scored transition equally. Timing and execution details retain every runtime policy, including no-prefetch.
