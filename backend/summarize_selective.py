@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from bisect import bisect_right
 import csv
 import json
 import statistics
@@ -35,6 +36,76 @@ def comparison(sessions):
     if not sessions:
         return None
     return paired_cluster_bootstrap_ci(sessions, alternative="less", iterations=5000, seed=617)
+
+
+def runtime_prediction_accuracy(scenario, policy):
+    """Evaluate recorded scoring jobs against their own subsequent demand.
+
+    New policies record query positions explicitly. Legacy logs only record
+    history, so ambiguous history alignments are excluded and counted.
+    """
+    queries = defaultdict(lambda: [0, 0, 0, 0])
+    families = defaultdict(lambda: [0, 0, 0, 0])
+    audit = defaultdict(int)
+    for seed in TEST:
+        root = trial(scenario, seed, policy)
+        reference = load(root / "demand_reference.json")
+        reference_pages = {qid: [int(entry[0]) for entry in seq] for qid, seq in reference.items()}
+        workload = {r["query_id"]: r for r in (json.loads(line) for line in
+                    (root / "workload.jsonl").read_text(encoding="utf-8").splitlines() if line.strip())}
+        histories = {}
+        cursors = defaultdict(int)
+        if policy in BASELINES:
+            for qid, pages in reference_pages.items():
+                lookup = defaultdict(list)
+                for pos in range(1, len(pages)):
+                    lookup[tuple(pages[max(0, pos-8):pos])].append(pos)
+                histories[qid] = lookup
+        path = root / "predictions.jsonl"
+        if not path.exists():
+            continue
+        with path.open(encoding="utf-8") as handle:
+            for line in handle:
+                event = json.loads(line)
+                ranking = [int(r["page"]) for r in event.get("ranked_candidates", [])]
+                if not ranking:
+                    audit["jobs_without_recorded_ranking"] += 1
+                    continue
+                qid, history = str(event.get("query_id")), tuple(int(x) for x in event.get("history", []))
+                pages = reference_pages.get(qid)
+                if not pages:
+                    audit["missing_query_reference"] += 1
+                    continue
+                pos = event.get("query_page_position")
+                if pos is None:
+                    options = histories.get(qid, {}).get(history, [])
+                    options = options[bisect_right(options, cursors[qid]):]
+                    if len(options) != 1:
+                        audit["ambiguous_legacy_history" if options else "unmatched_legacy_history"] += 1
+                        continue
+                    pos = options[0]
+                    cursors[qid] = pos
+                if not isinstance(pos, int) or not 1 <= pos < len(pages) or tuple(pages[max(0, pos-len(history)):pos]) != history:
+                    audit["unaligned_or_last_position"] += 1
+                    continue
+                target = pages[pos]
+                qkey = (seed, qid)
+                family = workload.get(qid, {}).get("family", "unknown")
+                q, g = queries[qkey], families[family]
+                for v in (q, g):
+                    v[0] += 1
+                    v[1] += int(ranking[0] == target)
+                    v[2] += int(target in ranking[:5])
+                    v[3] += int(target in ranking)
+    total = sum(v[0] for v in queries.values())
+    return {"scored_aligned_jobs": total, "queries": len(queries), "alignment": dict(audit),
+            "top1_macro_pct": statistics.mean(100*v[1]/v[0] for v in queries.values()) if queries else None,
+            "top1_micro_pct": 100*sum(v[1] for v in queries.values())/total if total else None,
+            "top5_micro_pct": 100*sum(v[2] for v in queries.values())/total if total else None,
+            "target_in_logged_candidates_pct": 100*sum(v[3] for v in queries.values())/total if total else None,
+            "by_family": {family: {"scored_aligned_jobs": v[0], "top1_micro_pct": 100*v[1]/v[0], "top5_micro_pct": 100*v[2]/v[0]}
+                          for family, v in families.items()},
+            "scope": "Only recorded scored jobs aligned to this policy's own actual demand stream. Unscored/rejected requests and ambiguous legacy histories are excluded; candidate logs are truncated, so target-in-logged-candidates is not full candidate recall. Different policies score different jobs."}
 
 
 def runtime_summary(scenario):
@@ -104,13 +175,21 @@ def runtime_summary(scenario):
             "counters": c,
             "by_family": {f: {"queries": len(xs), "mean_ms": statistics.mean(xs), "p95_ms": float(np.percentile(xs, 95))}
                           for f, xs in families[policy].items()}}
+        summary[policy]["runtime_prediction_accuracy"] = runtime_prediction_accuracy(scenario, policy)
         if policy != "none":
             summary[policy]["vs_none"] = comparison(pairs[policy])
+            summary[policy]["per_seed_mean_delta_ms"] = {str(seed): statistics.mean(ds) for seed, ds in pairs[policy].items()}
+            summary[policy]["seeds_with_lower_mean_latency"] = sum(statistics.mean(ds) < 0 for ds in pairs[policy].values())
             for family, sessions in family_pairs[policy].items():
                 summary[policy]["by_family"][family]["vs_none"] = comparison(sessions)
     # Direct paired comparisons to both existing predictors are also required.
     for policy in ABLATIONS:
-        for baseline in ("markov2", "model_ranker"):
+        baselines = ["markov2", "model_ranker"]
+        if policy != "context":
+            baselines.append("context")
+        if policy == "combined":
+            baselines.extend(["deadline", "adaptive"])
+        for baseline in baselines:
             sessions = {}
             for seed in TEST:
                 a = {r["query_id"]: float(r["elapsed_ms"]) for r in read_csv(trial(scenario, seed, policy) / "query_results.csv")}
@@ -168,18 +247,37 @@ def offline_summary(path, frozen, scenario):
     for policy, qs in agg.items():
         total = sum(v[0] for v in qs.values())
         qvals = list(qs.values())
+        family_rows = {}
+        for family, v in by_family[policy].items():
+            sessions = defaultdict(list)
+            for (seed, _, qfamily), qv in qs.items():
+                if qfamily == family:
+                    sessions[seed].append(100 * qv[1] / qv[0])
+            interval = paired_cluster_bootstrap_ci(dict(sessions), iterations=2000, seed=817) if len(sessions) >= 2 else None
+            family_rows[family] = {"transitions": v[0], "queries": sum(len(s) for s in sessions.values()),
+                "top1_macro_pct": statistics.mean(x for values in sessions.values() for x in values),
+                "top1_macro_ci95": interval,
+                "top1_micro_pct": 100*v[1]/v[0], "top5_micro_pct": 100*v[2]/v[0], "candidate_recall_pct": 100*v[3]/v[0]}
         summary[policy] = {"queries": len(qvals), "transitions": total,
             "top1_macro_pct": statistics.mean(100 * v[1] / v[0] for v in qvals),
             "top1_micro_pct": 100 * sum(v[1] for v in qvals) / total,
             "top5_micro_pct": 100 * sum(v[2] for v in qvals) / total,
             "candidate_recall_pct": 100 * sum(v[3] for v in qvals) / total,
             "skipped_transitions": sum(v[4] for v in qvals),
-            "by_family": {family: {"transitions": v[0],
-                                      "queries": sum(1 for q in qs if q[2] == family),
-                                      "top1_macro_pct": statistics.mean(100 * qv[1] / qv[0] for q, qv in qs.items() if q[2] == family),
-                                      "top1_micro_pct": 100*v[1]/v[0],
-                                      "top5_micro_pct": 100*v[2]/v[0], "candidate_recall_pct": 100*v[3]/v[0]}
-                          for family, v in by_family[policy].items()}}
+            "by_family": family_rows}
+    for policy in ABLATIONS:
+        summary[policy]["paired_family_accuracy_vs_baselines"] = {}
+        for baseline in ("markov2", "model_ranker"):
+            family_sessions = defaultdict(lambda: defaultdict(list))
+            for query, v in agg[policy].items():
+                reference = agg[baseline][query]
+                if v[0] != reference[0]:
+                    raise ValueError("Offline policies do not share transition counts")
+                seed, _, family = query
+                family_sessions[family][seed].append(100 * (v[1] - reference[1]) / v[0])
+            summary[policy]["paired_family_accuracy_vs_baselines"][baseline] = {
+                family: paired_cluster_bootstrap_ci(dict(sessions), iterations=2000, seed=919)
+                if len(sessions) >= 2 else None for family, sessions in family_sessions.items()}
     return {"policies": summary, "scope": "offline no-prefetch reference trace; all eligible transitions; hypothetical decisions with zero queue and cache pressure, including skipped transitions as errors. This is not measured runtime job accuracy. Baseline predictor scores do not include its runtime confidence/stride filtering."}
 
 
