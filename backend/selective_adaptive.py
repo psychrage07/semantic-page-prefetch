@@ -24,12 +24,10 @@ def net_benefit(action, estimates, *, queue_fraction, cache_fraction):
 
 def choose_action(index, history, family, policy, config, *, queue_fraction=0.0, cache_fraction=0.0):
     exact = has_second_order(index, history)
-    if policy in {"context", "combined"}:
+    if policy in {"context", "deadline", "adaptive", "combined"}:
         action, reason = context_action(index, history, family, config)
-    elif policy == "deadline":
-        action, reason = "neural", "baseline_neural"
     else:
-        action, reason = ("markov2", "exact_second_order") if exact else ("neural", "adaptive_neural_candidate")
+        raise ValueError(f"Unknown policy: {policy}")
     if policy not in {"adaptive", "combined"} or action == "skip":
         return action, reason, None
     group = "exact" if exact else "fallback"

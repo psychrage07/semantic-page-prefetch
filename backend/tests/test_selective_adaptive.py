@@ -31,3 +31,9 @@ def test_adaptive_uses_markov_when_supported_and_profitable():
             "demand_miss_ms": 10, "markov_score_ms": 0.01, "read_ms": 0.1, "deadline_ms": 10}
     config = {"estimates": {"point_lookup": {"exact": {"markov2": good}}}}
     assert choose_action(index, [1, 2], "point_lookup", "combined", config)[0] == "markov2"
+
+
+def test_deadline_ablation_keeps_exact_markov_and_never_guesses_neural_fallback():
+    index = SimpleNamespace(second_order={"1:2": [7]}, successors={2: [8]})
+    assert choose_action(index, [1, 2], "point_lookup", "deadline", {})[0] == "markov2"
+    assert choose_action(index, [2], "recursive_traversal", "deadline", {})[0] == "markov1"
