@@ -25,8 +25,10 @@ The new files live outside `backend/pagewise/` and `backend/scripts/` so the ori
 | `07ae5f83fa84206746c5592d29bc184d1fd0ded9` | Development calibration, ablation and held-out harness |
 | `3d7e7e6e52994f587718760997f2b5c36f97c218` | Per-family analysis and reporting tests |
 | `002ebb62fa0d5aa44c110b27f76761f1b0907798` | Frozen policy, protocol, aggregate evidence and report |
+| `995fbae67b8a3801d39942750bdfc1eb14c90a1e` | Initial handoff |
+| `dd1613d6f8a1189fb7662c54fd51ec34f8e55237` | Additional stale-job and benefit-accounting regression tests |
 
-The handoff itself is committed immediately after the evidence commit. `git log -1 --format=%H` identifies its commit. Pre-existing uncommitted SDSS/frontend changes remain outside these commits.
+`git log -1 --format=%H` identifies the latest handoff update. Pre-existing uncommitted SDSS/frontend changes remain outside these commits.
 
 ## Frozen experiment
 
@@ -58,7 +60,7 @@ In zero-delay trials the existing Markov-2 and neural ranker averaged 15.929 ms 
 
 ## Verification and limitations
 
-- Full backend suite: **145 passed**. After the separate family-interval analysis was added, its three focused reporting tests also passed.
+- Full backend suite: **145 passed**. After the family-interval analysis was added, its three focused reporting tests passed. After additional stale-job and benefit-accounting cases were added, all eight focused runtime tests passed.
 - Pinned TypeScript check `node_modules/.bin/tsc --noEmit` and production `npm run build` passed.
 - All **70 held-out trials** had matching workload hashes, clean worker shutdown, zero prefetch read errors and recorded peak RSS. Frozen source and actual live-demo assets still verify.
 - Offline policy accuracy is a common-reference approximation with zero queue/cache pressure; it excludes actual per-query caps and counts skipped predictions as errors. Actual runtime job accuracy is separately calculated only for recorded, aligned scoring jobs; ambiguous legacy histories are excluded. Logged candidate lists are truncated and are not a full candidate-recall measure.
