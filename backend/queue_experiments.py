@@ -28,6 +28,7 @@ QUERIES = 30
 SCENARIOS = {"zero": 0.0, "controlled-delay": 0.2}
 BASELINES = ["none", "markov2", "model_ranker"]
 ABLATIONS = ["context", "deadline", "adaptive", "combined"]
+SOURCE_FILES = ["selective_context.py", "selective_deadline.py", "selective_adaptive.py", "selective_prefetch.py", "queue_experiments.py", "calibrate_selective.py"]
 
 
 def digest(path):
@@ -36,6 +37,10 @@ def digest(path):
         for data in iter(lambda: handle.read(1024 * 1024), b""):
             h.update(data)
     return h.hexdigest()
+
+
+def source_digests():
+    return {name: digest(ROOT / name) for name in SOURCE_FILES}
 
 
 def write(path, value):
@@ -112,7 +117,9 @@ def worker(spec):
     config = dict(spec["config"])
     if spec["policy"] in ABLATIONS:
         from selective_prefetch import install_runtime
-        install_runtime(runner, spec["policy"], spec["policy_config"])
+        settings = dict(spec["policy_config"])
+        settings.update(settings["by_scenario"][spec["scenario"]])
+        install_runtime(runner, spec["policy"], settings)
         config["strategy"] = "model_ranker"
     runner.trace_workload(DB, spec["output"], query_count=QUERIES, seed=spec["seed"],
                           cache_kib=4096, prefetch_config=config)
@@ -126,18 +133,28 @@ def worker(spec):
           "rss_scope": "peak process working set since process start"})
 
 
-def run_phase(phase):
+def run_phase(phase, selected_policy=None):
     protocol = json.loads((OUTPUT / "protocol.json").read_text(encoding="utf-8"))
     if phase == "baseline":
         seeds, policies, policy_config = DEV, BASELINES, None
     elif phase == "development":
-        seeds, policies = DEV, ABLATIONS
+        if selected_policy not in ABLATIONS:
+            raise ValueError("Development requires one explicitly named ablation")
+        seeds, policies = DEV, [selected_policy]
         policy_config = json.loads((OUTPUT / "policy-development.json").read_text(encoding="utf-8"))
+        if selected_policy == "combined":
+            for scenario in SCENARIOS:
+                for seed in DEV:
+                    for policy in ("context", "deadline", "adaptive"):
+                        if not (OUTPUT / phase / scenario / f"seed-{seed}" / policy / "resource_usage.json").is_file():
+                            raise ValueError("Complete each individual ablation before the combined policy")
     elif phase == "heldout":
         seeds, policies = TEST, BASELINES + ABLATIONS
         policy_config = json.loads((OUTPUT / "policy-frozen.json").read_text(encoding="utf-8"))
-        assert policy_config["runtime_sha256"] == digest(ROOT / "selective_prefetch.py"), "Runtime changed after freeze"
+        assert policy_config["source_sha256"] == source_digests(), "Selective source changed after freeze"
         assert policy_config["checkpoint_sha256"] == protocol["checkpoint_sha256"] == digest(FROZEN / "params/model_ranker.pt")
+        from pagewise.runledger import source_hash
+        assert source_hash() == protocol["frozen_source_sha256"], "Frozen predictor source changed"
     else:
         raise ValueError(phase)
     model = FROZEN / "params"
@@ -173,17 +190,37 @@ def run_phase(phase):
                 timings = [float(r["elapsed_ms"]) for r in rows]
                 print(f"{phase}/{scenario}/{seed}/{policy}: {len(rows)} queries, "
                       f"mean={sum(timings)/len(timings):.3f}ms, wall={time.monotonic()-start:.1f}s", flush=True)
-    print(f"Completed {phase}", flush=True)
+    print(f"Completed {phase} {selected_policy or ''}", flush=True)
+
+
+def freeze():
+    destination = OUTPUT / "policy-frozen.json"
+    if destination.exists():
+        raise FileExistsError("Frozen configuration already exists")
+    for scenario in SCENARIOS:
+        for seed in DEV:
+            for policy in ABLATIONS:
+                if not (OUTPUT / "development" / scenario / f"seed-{seed}" / policy / "resource_usage.json").is_file():
+                    raise ValueError("All development ablations must complete before freezing")
+    policy = json.loads((OUTPUT / "policy-development.json").read_text(encoding="utf-8"))
+    policy["source_sha256"] = source_digests()
+    policy["freeze_note"] = "Development policy frozen before held-out evaluation; no changes based on test results."
+    policy["development_offline_sha256"] = digest(OUTPUT / "development-offline-transitions.csv")
+    write(destination, policy)
+    print(f"Frozen policy {digest(destination)}", flush=True)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("stage", choices=["initialize", "worker", "baseline", "development", "heldout"])
+    parser.add_argument("stage", choices=["initialize", "worker", "baseline", "development", "freeze", "heldout"])
     parser.add_argument("--spec", type=Path)
+    parser.add_argument("--policy", choices=ABLATIONS)
     args = parser.parse_args()
     if args.stage == "initialize":
         initialize()
     elif args.stage == "worker":
         worker(json.loads(args.spec.read_text(encoding="utf-8")))
+    elif args.stage == "freeze":
+        freeze()
     else:
-        run_phase(args.stage)
+        run_phase(args.stage, args.policy)

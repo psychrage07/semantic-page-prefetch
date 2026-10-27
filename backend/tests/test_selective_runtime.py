@@ -115,6 +115,26 @@ def test_queue_is_bounded_and_coalesces_inflight_duplicate_jobs(tmp_path):
         assert runtime.close()
 
 
+def test_per_query_limit_is_enforced_before_queue_admission(tmp_path):
+    runtime = make_runtime(tmp_path, policy_config={"max_jobs_per_query": 1, "neural_fallback_families": []})
+    started, release = threading.Event(), threading.Event()
+    def rank(*args):
+        started.set()
+        assert release.wait(3)
+        return []
+    runtime._rank = rank
+    try:
+        runtime.set_active_query("q1")
+        runtime.request_prediction([1, 2], context(1))
+        assert started.wait(2)
+        runtime.request_prediction([1, 2], context(2))
+        assert runtime.snapshot()["policy_query_limit_dropped"] == 1
+    finally:
+        release.set()
+        assert runtime.wait_idle(3)
+        assert runtime.close()
+
+
 def test_cached_pending_and_duplicate_candidates_are_not_read(tmp_path):
     runtime = make_runtime(tmp_path, degree=1)
     runtime._rank = lambda *args: [(3, 1.0), (3, 0.9), (4, 0.8), (5, 0.7)]

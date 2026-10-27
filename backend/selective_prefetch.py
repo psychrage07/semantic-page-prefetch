@@ -35,6 +35,9 @@ class SelectiveRuntime(PredictiveRuntime):
                             "policy_query_limit_dropped": 0, "policy_query_completed_dropped": 0,
                             "policy_duplicate_candidates": 0, "policy_cached_candidates": 0,
                             "policy_pending_candidates": 0, "policy_device_busy_dropped": 0,
+                            "policy_pages_read": 0, "policy_late_read_discarded": 0,
+                            "policy_net_decisions": 0, "policy_estimated_benefit_ms_total": 0.0,
+                            "policy_estimated_cost_ms_total": 0.0, "policy_estimated_net_ms_total": 0.0,
                             "policy_error_details": []})
         device = self.storage_device
         if device is not None and device.enabled:
@@ -90,6 +93,12 @@ class SelectiveRuntime(PredictiveRuntime):
         action, reason, net = choose_action(self.index, history, family, self.policy, self.policy_config,
                                             queue_fraction=queue_fraction, cache_fraction=cache_fraction)
         self._reason(reason)
+        if net is not None:
+            with self._lock:
+                self._stats["policy_net_decisions"] += 1
+                self._stats["policy_estimated_benefit_ms_total"] += net["expected_benefit_ms"]
+                self._stats["policy_estimated_cost_ms_total"] += net["estimated_cost_ms"]
+                self._stats["policy_estimated_net_ms_total"] += net["estimated_net_ms"]
         if action == "skip":
             with self._lock:
                 self._stats["policy_skipped"] += 1
@@ -268,8 +277,11 @@ class SelectiveRuntime(PredictiveRuntime):
                                     break
                                 with self._lock:
                                     inactive = self._active_query_id != qid
-                                if inactive or self._expired(context):
-                                    status = "query_completed_or_deadline_after_service"
+                                expired = self._expired(context)
+                                if inactive or expired:
+                                    status = "query_completed_after_service" if inactive else "deadline_after_service"
+                                    with self._lock:
+                                        self._stats["policy_query_completed_dropped" if inactive else "policy_deadline_dropped"] += 1
                                     self._reason(status)
                                     break
                                 handle.seek((page - 1) * self.page_size)
@@ -279,9 +291,22 @@ class SelectiveRuntime(PredictiveRuntime):
                                 with self._lock:
                                     self._stats["prefetch_read_ms_total"] += read_ms
                                     self._stats["prefetch_read_ms_max"] = max(self._stats["prefetch_read_ms_max"], read_ms)
+                                    self._stats["policy_pages_read"] += 1
                                 if len(data) != self.page_size:
                                     selected.append({"page": int(page), "score": float(score), "status": "short_read"})
                                     continue
+                                with self._lock:
+                                    inactive = self._active_query_id != qid
+                                expired = self._expired(context)
+                                if inactive or expired:
+                                    status = "query_completed_after_read" if inactive else "deadline_after_read"
+                                    with self._lock:
+                                        self._stats["policy_late_read_discarded"] += 1
+                                        self._stats["policy_query_completed_dropped" if inactive else "policy_deadline_dropped"] += 1
+                                    selected.append({"page": int(page), "score": float(score), "status": status,
+                                                     "page_read_start_ns": start, "page_read_done_ns": done, "page_read_ms": read_ms})
+                                    self._reason(status)
+                                    break
                                 inserted = self.cache.put(page, data, origin="prefetch", metadata={
                                     "prediction_id": pid, "query_id": qid, "template_id": context.get("template_id"),
                                     "request_ns": context["selective_request_ns"], "worker_start_ns": worker_ns,
