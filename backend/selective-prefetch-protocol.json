@@ -1,0 +1,57 @@
+{
+  "evidence_class": "new experiment; missing queue-optimization H1 results are not treated as verified",
+  "database": "D:\\shortly-source\\OS Project\\semantic-page-prefetch\\backend\\runs\\large-branch-20261015\\pagewise-large.sqlite",
+  "database_bytes": 8615698432,
+  "checkpoint_sha256": "23bafd4cce8cc40ddc5dacef7fb4990972cfba985b9d5bf779082b7dd31bf973",
+  "frozen_source_sha256": "67df304d39d11bc4fb14bd5679d5f5e7e4dd926f2370760820a831b1a122afd2",
+  "development_seeds": [
+    1101,
+    1102
+  ],
+  "heldout_seeds": [
+    4401,
+    4402,
+    4403,
+    4404,
+    4405
+  ],
+  "queries_per_seed": 30,
+  "seed_audit": "No matching seeds in 561 available run_metadata files; absent prior queue artifacts cannot be audited.",
+  "scenarios": {
+    "zero": 0.0,
+    "controlled-delay": 0.2
+  },
+  "storage_model": "shared, one simulated service channel; requested delay, not physical device latency",
+  "baselines": [
+    "none",
+    "markov2",
+    "model_ranker"
+  ],
+  "ablations": [
+    "context",
+    "deadline",
+    "adaptive",
+    "combined"
+  ],
+  "workload": "existing six-template synthetic Pagewise database workload, generated per seed",
+  "pairing": "identical seed and query parameters, policy order randomized per seed/scenario",
+  "cache": "512 Pagewise pages; 4096 KiB SQLite pager; OS cache not reset",
+  "diagnostics": "enabled equally for all policies",
+  "prefetch_workers": 1,
+  "frozen_settings": {
+    "degree": 1,
+    "confidence_threshold": 0.7,
+    "predict_on": "miss",
+    "predict_every": 4,
+    "queue_size": 64,
+    "drop_stale_jobs": true
+  },
+  "selection": "Development seeds only. Fallback neural requires at least 40 transitions, 10 queries, and a positive paired 95% query-bootstrap lower bound versus Markov-1. Recursive traversal and indexed_lookup disabled unless new adequate development evidence supports them; no threshold tuned on held-out data.",
+  "deadline": "Per-family median observed demand gap on zero-delay development traces; do not claim physical deadline guarantees.",
+  "adaptive": "Simple net-benefit estimate from development costs and delayed online counters; no future accesses.",
+  "test_rule": "freeze policy and code hashes before running held-out seeds; no re-tuning on test",
+  "accuracy_scope": "offline on same no-prefetch VFS transitions; scheduling can skip some runtime predictions",
+  "uncertainty": "paired hierarchical bootstrap clusters by seed and queries within seed; five seed clusters; exploratory by-family results",
+  "success": "held-out paired mean latency vs none with 95% interval entirely below zero; compare current hybrid and Markov-2 too",
+  "limitations": "OS cache is not controlled. Non-preemptible I/O already in progress can still delay demand; this is not a physical-storage benchmark."
+}

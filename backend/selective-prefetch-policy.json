@@ -1,0 +1,880 @@
+{
+  "checkpoint_sha256": "23bafd4cce8cc40ddc5dacef7fb4990972cfba985b9d5bf779082b7dd31bf973",
+  "development_seeds": [
+    1101,
+    1102
+  ],
+  "neural_fallback_families": [],
+  "allow_recursive_neural": false,
+  "max_jobs_per_query": 8,
+  "score_threshold": null,
+  "score_threshold_note": "No confidence threshold: conditional candidate scores were not calibrated against usefulness.",
+  "deadlines_ms": {
+    "indexed_join": 0.0325,
+    "point_lookup": 0.0233,
+    "recursive_traversal": 0.0397,
+    "range_scan": 0.0344,
+    "indexed_lookup": 0.0359
+  },
+  "by_scenario": {
+    "zero": {
+      "runtime_cost_ms": {
+        "markov2": {
+          "score_ms": 0.005069410634208856,
+          "read_ms": 0.18603181818181821
+        },
+        "markov1": {
+          "score_ms": 0.005069410634208856,
+          "read_ms": 0.18603181818181821
+        },
+        "neural": {
+          "score_ms": 1.3713118756936735,
+          "read_ms": 0.08962737430167592
+        }
+      },
+      "estimates": {
+        "indexed_join": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.05192878338278932,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            },
+            "markov1": {
+              "prediction_accuracy": 0.04451038575667656,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            },
+            "markov2": {
+              "prediction_accuracy": 0.04451038575667656,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.941586748038361,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            },
+            "markov1": {
+              "prediction_accuracy": 0.8387096774193549,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            },
+            "markov2": {
+              "prediction_accuracy": 0.9319965126416739,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.19650094861660078,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            }
+          }
+        },
+        "point_lookup": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            },
+            "markov1": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            },
+            "markov2": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.9508196721311475,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            },
+            "markov1": {
+              "prediction_accuracy": 0.8360655737704918,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            },
+            "markov2": {
+              "prediction_accuracy": 0.912568306010929,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.15066918604651164,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            }
+          }
+        },
+        "recursive_traversal": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.03501945525291829,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            },
+            "markov1": {
+              "prediction_accuracy": 0.0311284046692607,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            },
+            "markov2": {
+              "prediction_accuracy": 0.0311284046692607,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.175,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            },
+            "markov1": {
+              "prediction_accuracy": 0.025,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            },
+            "markov2": {
+              "prediction_accuracy": 0.025,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2100149825783972,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            }
+          }
+        },
+        "range_scan": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            },
+            "markov1": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            },
+            "markov2": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.07865168539325842,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            },
+            "markov1": {
+              "prediction_accuracy": 0.0056179775280898875,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            },
+            "markov2": {
+              "prediction_accuracy": 0.011235955056179775,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.2038348443843031,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            }
+          }
+        },
+        "indexed_lookup": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            },
+            "markov1": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            },
+            "markov2": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.9995105237395986,
+              "usefulness_given_prediction": 0.0,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.08962737430167592,
+              "queue_wait_ms": 86.14184095494292,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            },
+            "markov1": {
+              "prediction_accuracy": 0.9992657856093979,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            },
+            "markov2": {
+              "prediction_accuracy": 0.9995105237395986,
+              "usefulness_given_prediction": 0.06060606060606061,
+              "demand_miss_ms": 0.01649431929480901,
+              "score_ms": 1.3713118756936735,
+              "markov_score_ms": 0.005069410634208856,
+              "read_ms": 0.18603181818181821,
+              "queue_wait_ms": 20.10614538755457,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            }
+          }
+        }
+      },
+      "baseline_cost_measurements": {
+        "markov2": {
+          "score_ms": 0.005069410634208856,
+          "queue_wait_ms": 20.10614538755457,
+          "read_ms": 0.18603181818181821,
+          "usefulness_given_prediction": 0.06060606060606061,
+          "scored_jobs": 3122,
+          "prefetched_pages": 66
+        },
+        "neural": {
+          "score_ms": 1.3713118756936735,
+          "queue_wait_ms": 86.14184095494292,
+          "read_ms": 0.08962737430167592,
+          "usefulness_given_prediction": 0.0,
+          "scored_jobs": 901,
+          "prefetched_pages": 716
+        }
+      }
+    },
+    "controlled-delay": {
+      "runtime_cost_ms": {
+        "markov2": {
+          "score_ms": 0.006362483929030582,
+          "read_ms": 0.6681451856148487
+        },
+        "markov1": {
+          "score_ms": 0.006362483929030582,
+          "read_ms": 0.6681451856148487
+        },
+        "neural": {
+          "score_ms": 0.827634978154716,
+          "read_ms": 10.16338686868688
+        }
+      },
+      "estimates": {
+        "indexed_join": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.05192878338278932,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            },
+            "markov1": {
+              "prediction_accuracy": 0.04451038575667656,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            },
+            "markov2": {
+              "prediction_accuracy": 0.04451038575667656,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 674
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.941586748038361,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            },
+            "markov1": {
+              "prediction_accuracy": 0.8387096774193549,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            },
+            "markov2": {
+              "prediction_accuracy": 0.9319965126416739,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5702000790513834,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0325,
+              "sample_transitions": 1147
+            }
+          }
+        },
+        "point_lookup": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            },
+            "markov1": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            },
+            "markov2": {
+              "prediction_accuracy": 0.42857142857142855,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 35
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.9508196721311475,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            },
+            "markov1": {
+              "prediction_accuracy": 0.8360655737704918,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            },
+            "markov2": {
+              "prediction_accuracy": 0.912568306010929,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.570414534883721,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0233,
+              "sample_transitions": 366
+            }
+          }
+        },
+        "recursive_traversal": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.03501945525291829,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            },
+            "markov1": {
+              "prediction_accuracy": 0.0311284046692607,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            },
+            "markov2": {
+              "prediction_accuracy": 0.0311284046692607,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 257
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.175,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            },
+            "markov1": {
+              "prediction_accuracy": 0.025,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            },
+            "markov2": {
+              "prediction_accuracy": 0.025,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5777891986062718,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0397,
+              "sample_transitions": 40
+            }
+          }
+        },
+        "range_scan": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            },
+            "markov1": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            },
+            "markov2": {
+              "prediction_accuracy": 0.010120177103099304,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 1581
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.07865168539325842,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            },
+            "markov1": {
+              "prediction_accuracy": 0.0056179775280898875,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            },
+            "markov2": {
+              "prediction_accuracy": 0.011235955056179775,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5774964817320704,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0344,
+              "sample_transitions": 178
+            }
+          }
+        },
+        "indexed_lookup": {
+          "fallback": {
+            "neural": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            },
+            "markov1": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            },
+            "markov2": {
+              "prediction_accuracy": 1.0,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 3
+            }
+          },
+          "exact": {
+            "neural": {
+              "prediction_accuracy": 0.9995105237395986,
+              "usefulness_given_prediction": 0.09090909090909091,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 10.16338686868688,
+              "queue_wait_ms": 0.07713728160328882,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            },
+            "markov1": {
+              "prediction_accuracy": 0.9992657856093979,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            },
+            "markov2": {
+              "prediction_accuracy": 0.9995105237395986,
+              "usefulness_given_prediction": 0.015661252900232018,
+              "demand_miss_ms": 0.5738654913483513,
+              "score_ms": 0.827634978154716,
+              "markov_score_ms": 0.006362483929030582,
+              "read_ms": 0.6681451856148487,
+              "queue_wait_ms": 0.0746723836461816,
+              "deadline_ms": 0.0359,
+              "sample_transitions": 12258
+            }
+          }
+        }
+      },
+      "baseline_cost_measurements": {
+        "markov2": {
+          "score_ms": 0.006362483929030582,
+          "queue_wait_ms": 0.0746723836461816,
+          "read_ms": 0.6681451856148487,
+          "usefulness_given_prediction": 0.015661252900232018,
+          "scored_jobs": 3889,
+          "prefetched_pages": 3448
+        },
+        "neural": {
+          "score_ms": 0.827634978154716,
+          "queue_wait_ms": 0.07713728160328882,
+          "read_ms": 10.16338686868688,
+          "usefulness_given_prediction": 0.09090909090909091,
+          "scored_jobs": 3891,
+          "prefetched_pages": 99
+        }
+      }
+    }
+  },
+  "fallback_evidence": {
+    "indexed_join": {
+      "fallback_transitions": 674,
+      "queries": 24,
+      "seeds": 2,
+      "neural_minus_markov1_macro_pp": 1.16778,
+      "ci95_low_pp": 0.0,
+      "ci95_high_pp": 2.653806,
+      "allowed": false,
+      "decision": "exploratory development evidence; recursive fallback disabled by default"
+    },
+    "point_lookup": {
+      "fallback_transitions": 35,
+      "queries": 14,
+      "seeds": 2,
+      "neural_minus_markov1_macro_pp": 0.0,
+      "ci95_low_pp": 0.0,
+      "ci95_high_pp": 0.0,
+      "allowed": false,
+      "decision": "exploratory development evidence; recursive fallback disabled by default"
+    },
+    "recursive_traversal": {
+      "fallback_transitions": 257,
+      "queries": 6,
+      "seeds": 2,
+      "neural_minus_markov1_macro_pp": 0.362319,
+      "ci95_low_pp": 0.0,
+      "ci95_high_pp": 1.630435,
+      "allowed": false,
+      "decision": "exploratory development evidence; recursive fallback disabled by default"
+    },
+    "range_scan": {
+      "fallback_transitions": 1581,
+      "queries": 13,
+      "seeds": 2,
+      "neural_minus_markov1_macro_pp": 0.020214,
+      "ci95_low_pp": -0.343744,
+      "ci95_high_pp": 0.373765,
+      "allowed": false,
+      "decision": "exploratory development evidence; recursive fallback disabled by default"
+    },
+    "indexed_lookup": {
+      "fallback_transitions": 3,
+      "queries": 3,
+      "seeds": 2,
+      "neural_minus_markov1_macro_pp": 0.0,
+      "ci95_low_pp": 0.0,
+      "ci95_high_pp": 0.0,
+      "allowed": false,
+      "decision": "exploratory development evidence; recursive fallback disabled by default"
+    }
+  },
+  "exact_context_fraction": 0.8458189733357518,
+  "transitions": 16539,
+  "deadline_note": "Median observed time from end of one no-prefetch VFS read to start of next within query, zero-delay development only; estimator, not a real demand deadline.",
+  "net_note": "Heuristic multiplies development top-1 rate, observed useful/prefetched fraction and estimated readiness; it subtracts score, queue and pressure-weighted read cost. Markov-1 uses Markov-2 cost/usefulness as a proxy. Zero queue/cache pressure is not assumed at runtime.",
+  "source": "only development seeds 1101/1102, full no-prefetch transitions; policy unchanged using held-out results",
+  "source_sha256": {
+    "selective_context.py": "c2f5845059a291fc2aaaf83af2765b1282f6292ed9b380196c7f45038aee78f9",
+    "selective_deadline.py": "b2afa4d46b25a43b3281fed672485775d4993555b099916d33d32e0a2bf95fde",
+    "selective_adaptive.py": "1a0eae0587b4db834d06e0692fcc0864f9b71c437028b2d0e340e83134a4f8f5",
+    "selective_prefetch.py": "c9845b8e1c0b08758b9b6e068618814904002c95533403cd773574359f2fb24b",
+    "queue_experiments.py": "99fffbb8dfce622ed68b6d44bd6500769ba87b383d0cf3a2bc1361035098ae6b",
+    "calibrate_selective.py": "510fe19b8db96fc5186c92fd519f6bc8f0049d4c1d047af0971ec7c9968e574c"
+  },
+  "freeze_note": "Development policy frozen before held-out evaluation; no changes based on test results.",
+  "development_offline_sha256": "c4908226fddb95a6fd3d0930d22d6f1dd4893bd21d4e2d46a475219556bdc8bd"
+}
