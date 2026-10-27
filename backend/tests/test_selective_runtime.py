@@ -78,11 +78,13 @@ def test_completed_query_cancels_inflight_scoring_before_io(tmp_path):
         runtime.set_active_query("q1")
         runtime.request_prediction([1, 2], context())
         assert started.wait(2)
+        runtime.request_prediction([1, 2], context(2))
         runtime.set_active_query(None)
         release.set()
         assert runtime.wait_idle(3)
         snap = runtime.snapshot()
         assert snap["policy_query_completed_dropped"] >= 1
+        assert snap["stale_jobs_dropped"] >= 1
         assert snap["pages_prefetched"] == 0
         assert snap["prefetch_read_errors"] == 0
     finally:
@@ -132,6 +134,25 @@ def test_per_query_limit_is_enforced_before_queue_admission(tmp_path):
     finally:
         release.set()
         assert runtime.wait_idle(3)
+        assert runtime.close()
+
+
+def test_adaptive_rejection_accounts_for_estimated_cost_and_benefit(tmp_path):
+    estimates = {"prediction_accuracy": 0.1, "usefulness_given_prediction": 0.1,
+                 "demand_miss_ms": 0.01, "markov_score_ms": 2, "deadline_ms": 1}
+    config = {"max_jobs_per_query": 8, "estimates": {"point_lookup": {"exact": {"markov2": estimates}}}}
+    runtime = make_runtime(tmp_path, policy="adaptive", policy_config=config)
+    try:
+        runtime.set_active_query("q1")
+        runtime.request_prediction([1, 2], context())
+        stats = runtime.snapshot()
+        assert stats["policy_net_decisions"] == 1
+        assert stats["policy_skipped"] == 1
+        assert stats["queued_prediction_jobs"] == 0
+        assert stats["policy_estimated_cost_ms_total"] > stats["policy_estimated_benefit_ms_total"]
+        assert stats["policy_estimated_net_ms_total"] == pytest.approx(
+            stats["policy_estimated_benefit_ms_total"] - stats["policy_estimated_cost_ms_total"])
+    finally:
         assert runtime.close()
 
 
