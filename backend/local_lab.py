@@ -188,7 +188,9 @@ def demo_steps(root: Path, queries: int) -> list[list[str]]:
                        "cache-kib": 128, "cache-pages": 128, "degree": 2}),
         ("dashboard-export", {"run-dir": str(root), "out": str(root / "dashboard.json")}),
     ]
-    return [build_argv(command, options) for command, options in entries]
+    return [build_argv(command, options) for command, options in entries] + [
+        ["local:small-hybrid", "--run-dir", str(root)]
+    ]
 
 
 def hybrid_steps(root: Path, queries: int, seed: int) -> tuple[list[list[str]], list[str]]:
@@ -256,8 +258,12 @@ def _run(job: dict) -> None:
                     _save(job)
                 if argv[0] == "local:trained-hybrid":
                     command = [sys.executable, "-u", str(BACKEND / "live_hybrid.py"), *argv[1:]]
+                elif argv[0] == "local:small-hybrid":
+                    command = [sys.executable, "-u", str(BACKEND / "small_hybrid.py"), *argv[1:]]
                 elif argv[0] == "local:workspace":
                     command = [sys.executable, "-u", str(BACKEND / "workspace.py"), *argv[1:]]
+                elif argv[0] == "local:idle-hybrid":
+                    command = [sys.executable, "-u", str(BACKEND / "idle_live.py"), *argv[1:]]
                 elif argv[0].startswith("script:"):
                     _, script, *subcommand = argv[0].split(":")
                     command = [sys.executable, "-u", str(BACKEND / "scripts" / f"{script}.py"), *subcommand, *argv[1:]]
@@ -332,6 +338,22 @@ def start_job(payload: dict) -> dict:
             steps = [["local:workspace", "--out", str(root)]]
             labels = ["Execute SQL through Pagewise VFS and runtime"]
             result_file = "workspace-result.json"
+        elif preset == "idle-hybrid":
+            from idle_live import assets
+            dataset = payload.get("dataset", "small")
+            evidence = assets(dataset)
+            if not evidence["available"]:
+                raise ValueError(evidence["reason"])
+            queries = int(payload.get("queries", 20))
+            if not 10 <= queries <= 100:
+                raise ValueError("Idle-hybrid queries must be between 10 and 100 per policy")
+            root = LAB / job_id
+            root.mkdir(parents=True, exist_ok=False)
+            seed = 1_000_000_000 + secrets.randbelow(1_000_000_000)
+            steps = [["local:idle-hybrid", "--out", str(root), "--dataset", dataset,
+                      "--queries", str(queries), "--seed", str(seed)]]
+            labels = ["Run matched SQL workloads with idle semantic prediction"]
+            result_file = "idle-result.json"
         else:
             options = payload.get("options", {})
             steps = [build_argv(payload.get("command"), options)]
@@ -413,6 +435,9 @@ class Handler(BaseHTTPRequestHandler):
                     return self._reply(assets())
                 except (ValueError, OSError) as exc:
                     return self._reply({"available": False, "reason": str(exc)})
+            if path.path == "/api/idle-hybrid":
+                from idle_live import assets
+                return self._reply(assets(query.get("dataset", ["small"])[0]))
             if path.path == "/api/selected-results":
                 return self._reply(latest_selected_result())
             if path.path == "/api/commands":

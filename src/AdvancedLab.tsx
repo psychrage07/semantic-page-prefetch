@@ -1,3 +1,4 @@
+import { processMessages } from "./processLog";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 type Option = { name: string; required: boolean; default: unknown; choices: string[] | null; help: string; kind: string; multiple: boolean; path: boolean };
@@ -182,7 +183,7 @@ export default function AdvancedLab({ onLoadSnapshot }: { onLoadSnapshot: (snaps
           <p className="local-note">Started {new Date(job.started_at).toLocaleString()} · Results in {job.root}</p>
           {job.status === "running" && <button className="local-secondary" onClick={() => void cancel()}>Cancel run</button>}
           {job.error && <p className="local-error">{job.error}</p>}
-          <pre className="local-log" aria-label="Backend output">{log || "Waiting for backend output…"}</pre></> : <p className="local-note">Start a run to see live output here.</p>}
+          <pre className="local-log" aria-label="Backend output">{processMessages(log) || "Waiting for backend output…"}</pre></> : <p className="local-note">Start a run to see live output here.</p>}
       </section>
     </div>
     <section className="local-panel">

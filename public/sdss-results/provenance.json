@@ -1,0 +1,88 @@
+{
+  "dataset": "SDSS DR7",
+  "endpoint": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp",
+  "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+50000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+ORDER+BY+s.specObjID&format=csv",
+  "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E105212596461764608+ORDER+BY+s.specObjID&format=csv",
+  "download_sql": "SELECT TOP 50000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID ORDER BY s.specObjID",
+  "batches": [
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E0+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E0+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>0 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "7c283db6b2a28b5c1dcb98cc11aa427489363590076da58b1ce9beb61ae68160"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E77628572621078528+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E77628572621078528+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>77628572621078528 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "0386be55c842b19ef9d6919e755e1a2938be2a230abe59061053d32e4d3fda31"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E80161988503666688+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E80161988503666688+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>80161988503666688 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "765e3d2c7e991b46cc9046ec86688483e5e6569000785a43ae5f667f1f50e83c"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E82695481074909184+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E82695481074909184+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>82695481074909184 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "1b2b53676fd9327e607e0a16cb6c4b7e0a92c86520e60d8f606b351a086240d0"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E85227441269768192+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E85227441269768192+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>85227441269768192 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "e9f64d3ac0300405e592fc5b40a711139185a7bce3dc4f05ef615d4583b8afa1"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E88042195600277504+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E88042195600277504+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>88042195600277504 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "214b2f4627f56aceaca811a3607cd91b83d9b6c25c487bf58665fe492fc608ec"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E93674608263168000+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E93674608263168000+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>93674608263168000 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "ce3da256da73a345cde4bd0a5098b962d00b80df1abfd2c84109d15522463ca9"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E95924790103113728+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E95924790103113728+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>95924790103113728 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "c7916e4539777a70ddf4cd7ebaaf7ab11f869f37489e7da7e8a4f575a4451522"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E100146046327324672+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E100146046327324672+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>100146046327324672 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "cf7b9986a487486ab28bcdcae331835cb1c55be82c7b212cd335cbacbf323801"
+    },
+    {
+      "request_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E105212596461764608+ORDER+BY+s.specObjID&format=csv",
+      "response_url": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp?cmd=SELECT+TOP+5000+p.objID%2Cp.ra%2Cp.dec%2Cp.u%2Cp.g%2Cp.r%2Cp.i%2Cp.z%2Cp.type%2Cp.run%2Cp.rerun%2Cp.camcol%2Cp.field%2Cp.extinction_r%2C%0As.specObjID%2Cs.z+AS+redshift%2Cs.zErr%2Cs.specClass%2Cs.plate%2Cs.mjd%2Cs.fiberID%0AFROM+SpecObj+AS+s+JOIN+PhotoObj+AS+p+ON+p.objID%3Ds.bestObjID+WHERE+s.specObjID%3E105212596461764608+ORDER+BY+s.specObjID&format=csv",
+      "sql": "SELECT TOP 5000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID WHERE s.specObjID>105212596461764608 ORDER BY s.specObjID",
+      "rows": 5000,
+      "sha256": "35674632a985887c4ae4c2e9e0b4990d94775fe7139c96223218e7094ee3b4a6"
+    }
+  ],
+  "download_note": "Single large response exceeded legacy ASP response buffer; same ordered subset retrieved in 5000-row keyset batches. Failed response retained in logs.",
+  "rows": 50000,
+  "bytes": 8606627,
+  "sha256": "d0292cb385e5b0c1907fa0047321d5149ef2880b0cb21ddf0f4996025e6c325a",
+  "download_seconds": 54.98636270000134,
+  "downloaded_at_utc": "2026-10-27T05:59:32Z",
+  "access_and_acknowledgment": "https://classic.sdss.org/dr7/credits.html",
+  "official_sample_queries": "https://skyserver.sdss.org/dr7/en/help/docs/realquery.asp",
+  "paper_dataset_connection": "SeLeP section 4.1.2 uses SDSS DR7; this subset and SQLite physical layout differ from its 16GB PostgreSQL database"
+}

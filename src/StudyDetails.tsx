@@ -72,13 +72,11 @@ export default function NeuralStudy({ onOpenLab }: { onOpenLab: () => void }) {
     <section className="panel neural-panel">
       <p className="eyebrow">REAL APSW QUERY EXECUTION / LOWER IS BETTER</p><h2>End-to-end latency</h2>
       <p>Cache: 512 pages. One prefetch worker. The frozen neural policy predicts every fourth miss at confidence ≥ 0.7, degree 1. Each row contains 300 query executions across five seeds.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Scenario</th><th>No prefetch mean</th><th>Markov-2 mean</th><th>Neural mean</th><th>Neural p95</th></tr></thead><tbody>
-        {study.runtime.map(scenario => <tr key={scenario.label}><th scope="row">{scenario.label}</th><td>{fixed(scenario.summary.none.mean_ms)} ms</td><td>{fixed(scenario.summary.markov2.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.p95_ms)} ms</td></tr>)}
+      <div className="neural-table-wrap"><table><thead><tr><th>Scenario</th><th>Markov-2 mean</th><th>Neural mean</th><th>Neural p95</th></tr></thead><tbody>
+        {study.runtime.map(scenario => <tr key={scenario.label}><th scope="row">{scenario.label}</th><td>{fixed(scenario.summary.markov2.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.mean_ms)} ms</td><td>{fixed(scenario.summary.selected_ranker.p95_ms)} ms</td></tr>)}
       </tbody></table></div>
       <p className="neural-note">k is an abstract service-channel count. Delay labels are requested artificial delays; the 0.2 ms sleep calibration achieved 0.5234 ms on this host. These measurements do not establish physical disk performance.</p>
-      <div className="neural-table-wrap"><table><thead><tr><th>Neural vs no prefetch</th><th>Delta ms</th><th>95% interval</th><th>Holm p</th><th>Speedup support</th></tr></thead><tbody>
-        {Object.entries(study.runtime_comparisons).filter(([name]) => name.includes("selected_ranker")).map(([name, row]) => <tr key={name}><th scope="row">{name.split(":")[0]}</th><td>{signed(row.mean)}</td><td>[{fixed(row.ci95_low)}, {fixed(row.ci95_high)}]</td><td>{fixed(row.holm_adjusted_p, 4)}</td><td>{row.holm_decision ? "Supported" : "Not established"}</td></tr>)}
-      </tbody></table></div>
+      <p className="neural-note">The complete runtime comparisons are available in the <a href="/pagewise-neural-improvement.json" download>study results</a>.</p>
       <h2>Prefetch efficiency and worker cost</h2>
       <div className="neural-table-wrap"><table><thead><tr><th>Scenario</th><th>Pages prefetched</th><th>Useful rate</th><th>Scoring ms/job</th><th>Queue wait ms/job</th><th>Stale jobs dropped</th></tr></thead><tbody>
         {study.runtime_telemetry.map(row => <tr key={row.scenario}><th scope="row">{row.scenario}</th><td>{row.pages_prefetched.toLocaleString()}</td><td>{fixed(row.useful_prefetch_pct)}%</td><td>{fixed(row.inference_ms_per_scored_job, 3)}</td><td>{fixed(row.queue_wait_ms_per_dequeued_job, 3)}</td><td>{row.stale_jobs_dropped.toLocaleString()}</td></tr>)}

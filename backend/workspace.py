@@ -22,7 +22,17 @@ BACKEND = Path(__file__).resolve().parent
 LAB = BACKEND / "runs/local-lab"
 LABELS = {"none": "No prefetch", "sequential": "Sequential", "markov1": "Markov-1", "markov2": "Markov-2",
           "model_a": "Model A · history", "model_b": "Model B · semantics", "hybrid": "Standard hybrid",
-          "model_ranker": "Selected neural hybrid"}
+          "model_ranker": "Neural hybrid · semantics", "context": "Context-filtered policy"}
+CONTEXT_POLICY = BACKEND / "runs/selective-prefetch-20261027/policy-frozen.json"
+
+
+def context_configuration(scope: str) -> dict:
+    if scope == "research":
+        config = json.loads(CONTEXT_POLICY.read_text(encoding="utf-8"))
+        return {**config, **config["by_scenario"]["zero"],
+                "scope": "Frozen context policy, new custom SQL workload; no artificial delay."}
+    return {"neural_fallback_families": [], "allow_recursive_neural": False, "max_jobs_per_query": 8,
+            "scope": "Small-database context routing: Markov-2, Markov-1 or skip. Neural fallback is disabled; research calibration is not reused."}
 
 
 def write_json(path: Path, value):
@@ -47,7 +57,7 @@ def resolve_database(identifier: str) -> dict:
         evidence = assets()
         return {"id": identifier, "scope": "research", "label": "8.62 GB research database", "db": DATABASE,
                 "models": FROZEN / "params", "page_map": FROZEN / "params/page_map.json", "evidence": evidence,
-                "policies": ["none", "sequential", "markov1", "markov2", "model_ranker"]}
+                "policies": ["none", "sequential", "markov1", "markov2", "model_ranker"] + (["context"] if CONTEXT_POLICY.is_file() else [])}
     if not isinstance(identifier, str) or not re.fullmatch(r"[a-f0-9]{12}", identifier):
         raise ValueError("Choose a generated database from the workspace catalog")
     root = (LAB / identifier).resolve()
@@ -56,8 +66,21 @@ def resolve_database(identifier: str) -> dict:
     db, models, page_map = root / "pagewise-demo.sqlite", root / "models", root / "trace/page_map.json"
     if not all(path.is_file() for path in [db, page_map, models / "candidate_index.json", models / "model_b.pt"]):
         raise ValueError("Complete a small demo build before querying its database with trained models")
-    return {"id": identifier, "scope": "small", "label": f"Small demo · {identifier}", "db": db, "models": models,
-            "page_map": page_map, "policies": ["none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid"]}
+    ranker = root / "selected-hybrid"
+    has_ranker = all((ranker / name).is_file() for name in ("model_ranker.pt", "candidate_index.json", "page_map.json", "evaluation.json"))
+    if has_ranker:
+        try:
+            report = json.loads((ranker / "evaluation.json").read_text(encoding="utf-8"))
+            checksum = hashlib.sha256((ranker / "model_ranker.pt").read_bytes()).hexdigest()
+            has_ranker = report.get("neural_residual_trained") is True and report.get("checkpoint_sha256") == checksum
+        except (OSError, ValueError, TypeError):
+            has_ranker = False
+    policies = ["none", "sequential", "markov1", "markov2", "model_a", "model_b", "hybrid", "context"]
+    if has_ranker:
+        policies.append("model_ranker")
+    label = f"Small demo · {identifier}" + (" · neural hybrid trained" if has_ranker else " · Model B only")
+    return {"id": identifier, "scope": "small", "label": label, "db": db, "models": models,
+            "page_map": page_map, "policies": policies, "ranker_models": ranker if has_ranker else None}
 
 
 def catalog() -> dict:
@@ -72,7 +95,7 @@ def catalog() -> dict:
         databases.append({key: item[key] for key in ("id", "label", "scope", "policies")} | {"bytes": path.stat().st_size})
     if DATABASE.is_file() and (FROZEN / "params/model_ranker.pt").is_file():
         databases.append({"id": "research", "label": "8.62 GB research study · existing frozen model", "scope": "research",
-                          "bytes": DATABASE.stat().st_size, "policies": ["none", "sequential", "markov1", "markov2", "model_ranker"]})
+                          "bytes": DATABASE.stat().st_size, "policies": ["none", "sequential", "markov1", "markov2", "model_ranker"] + (["context"] if CONTEXT_POLICY.is_file() else [])})
     params = {"customer_orders": [1, 25], "order_items_join": [1, 50], "product_sales": [1, 100],
               "created_range": [0, 2147483647, 100], "graph_walk": [1, 3, 100], "customer_profile": [1]}
     return {"databases": databases, "policies": LABELS,
@@ -150,7 +173,7 @@ def validate_request(payload: dict) -> dict:
     repeats, limit = int(payload.get("repeats", 1)), int(payload.get("row_limit", 1000))
     if not 1 <= repeats <= 20 or not 1 <= limit <= 5000:
         raise ValueError("Use 1–20 repetitions and a result limit of 1–5000 rows")
-    policies = payload.get("policies", ["model_ranker" if item["scope"] == "research" else "model_b"])
+    policies = payload.get("policies", ["model_ranker" if "model_ranker" in item["policies"] else "model_b"])
     if not isinstance(policies, list) or not policies or len(policies) != len(set(policies)) or any(policy not in item["policies"] for policy in policies):
         raise ValueError("Choose supported policies for the selected database/model")
     import apsw
@@ -212,16 +235,28 @@ def execute_policy(item: dict, request: dict, out: Path, policy: str, state):
     page_size = read_page_size(item["db"])
     model_dir = out / "model"
     model = model_dir / ("model_a.pt" if policy == "model_a" else "model_b.pt")
-    if item["scope"] == "research":
+    if item["scope"] == "research" and policy == "model_ranker":
         model = item["models"] / "model_ranker.pt"
+    if item["scope"] == "small" and (policy == "model_ranker" or (policy == "context" and item.get("ranker_models"))):
+        model_dir = model_dir / "selected-hybrid"
+        model = model_dir / "model_ranker.pt"
     settings = {"cache_pages": 512 if item["scope"] == "research" else 128, "degree": 1 if item["scope"] == "research" else 2,
                 "confidence_threshold": 0.0, "predict_on": "miss", "predict_every": 1}
-    if policy == "model_ranker":
+    if policy == "model_ranker" and item["scope"] == "research":
         settings.update(item["evidence"]["settings"])
-    runtime = PredictiveRuntime(item["db"], page_size, model_dir / "page_map.json", model_dir / "candidate_index.json",
-        model if policy in {"model_a", "model_b", "hybrid", "model_ranker"} else None,
-        semantic=policy in {"model_b", "hybrid"}, strategy=policy, prediction_log_path=directory / "predictions.jsonl",
-        storage_model="shared", drop_stale_jobs=True, diagnostics_enabled=True, prefetch_workers=1, **settings)
+    runtime_type, runtime_extra, strategy = PredictiveRuntime, {}, policy
+    if policy == "context":
+        from selective_prefetch import SelectiveRuntime
+        config = json.loads((out / "model/context-policy.json").read_text(encoding="utf-8"))
+        runtime_type, runtime_extra = SelectiveRuntime, {"policy": "context", "policy_config": config}
+        strategy = "model_ranker" if config.get("neural_fallback_families") else "markov2"
+        if item["scope"] == "research":
+            model = item["models"] / "model_ranker.pt"
+        settings.update({"degree": 1, "predict_every": 4})
+    runtime = runtime_type(item["db"], page_size, model_dir / "page_map.json", model_dir / "candidate_index.json",
+        model if strategy in {"model_a", "model_b", "hybrid", "model_ranker"} else None,
+        semantic=policy in {"model_b", "hybrid"}, strategy=strategy, prediction_log_path=directory / "predictions.jsonl",
+        storage_model="shared", drop_stale_jobs=True, diagnostics_enabled=True, prefetch_workers=1, **settings, **runtime_extra)
     recorder = TraceRecorder(directory / "trace.jsonl", item["db"], page_size)
     vfs = TraceVFS(recorder, runtime=runtime)
     conn = None
@@ -337,6 +372,8 @@ def run(out: Path):
     item = resolve_database(request["database"])
     model_dir = out / "model"
     model_dir.mkdir(exist_ok=False)
+    if "context" in request["policies"]:
+        write_json(model_dir / "context-policy.json", context_configuration(item["scope"]))
     index = json.loads((item["models"] / "candidate_index.json").read_text(encoding="utf-8"))
     index["layout_database_path"] = str(item["db"])
     if item["scope"] == "research":
@@ -347,6 +384,14 @@ def run(out: Path):
     if item["scope"] == "small":
         for name in ["model_a.pt", "model_b.pt"]:
             shutil.copyfile(item["models"] / name, model_dir / name)
+        if item.get("ranker_models"):
+            ranker_dir = model_dir / "selected-hybrid"
+            ranker_dir.mkdir()
+            ranker_index = json.loads((item["ranker_models"] / "candidate_index.json").read_text(encoding="utf-8"))
+            ranker_index["layout_database_path"] = str(item["db"])
+            write_json(ranker_dir / "candidate_index.json", ranker_index)
+            for name in ("model_ranker.pt", "page_map.json"):
+                shutil.copyfile(item["ranker_models"] / name, ranker_dir / name)
     before = {"bytes": item["db"].stat().st_size, "mtime_ns": item["db"].stat().st_mtime_ns}
     order = list(request["policies"])
     random.Random(request["order_seed"]).shuffle(order)

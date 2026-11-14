@@ -1,0 +1,1894 @@
+{
+  "policy_order": [
+    "none",
+    "markov2",
+    "model_ranker"
+  ],
+  "scope": "Operational smoke check, 20 paired fresh queries, no injected delay, OS cache not reset; not a speedup study",
+  "results": {
+    "none": {
+      "metadata": {
+        "database_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\data\\sdss-dr7.sqlite",
+        "page_size": 4096,
+        "query_count": 20,
+        "seed": 501,
+        "cache_kib_requested": 128,
+        "sqlite_cache_size_pragma": null,
+        "mmap_size_effective_bytes": 0,
+        "stdlib_sqlite_version": "3.50.4",
+        "apsw_sqlite_version": "3.54.0",
+        "page_map_pages": 3855,
+        "page_map_scope": "complete dbstat map",
+        "trace_kind": "APSW VFS xRead requests; not a complete logical reference trace",
+        "physical_io_note": "A VFS xRead can be satisfied by the OS page cache; this trace does not prove physical disk I/O.",
+        "prefetch_config": {
+          "strategy": "none",
+          "candidate_index_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\models\\candidate_index.json",
+          "model_path": null,
+          "semantic": true,
+          "cache_pages": 512,
+          "prefetch_workers": 1,
+          "degree": 1,
+          "confidence_threshold": 0.7,
+          "queue_size": 64,
+          "predict_on": "miss",
+          "predict_every": 4,
+          "drop_stale_jobs": true,
+          "miss_delay_ms": 0,
+          "diagnostics_enabled": true
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "oracle_trace_path": null,
+        "oracle_miss_path": null,
+        "record_demand_reference": false,
+        "diagnostics_enabled": true,
+        "miss_delay_ms_injected": 0,
+        "mode": "real-storage-no-injected-delay",
+        "query_latency_ms": {
+          "median": 0.8034,
+          "p95": 2.6755,
+          "total": 23.153,
+          "min": 0.177,
+          "max": 6.4514
+        },
+        "end_to_end_wall_ms": 2048.534,
+        "results": [
+          {
+            "query_id": "501-00007",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.3036,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587722982278693005,
+                184.03322868,
+                -0.7311568,
+                19.402534,
+                17.980291,
+                17.201159,
+                16.83926,
+                16.538919
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00002",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.6755,
+            "result_rows": 50,
+            "first_rows_preview": [
+              [
+                587731187268124896,
+                18.984722,
+                17.552324,
+                16.866692,
+                16.482512,
+                16.200138
+              ],
+              [
+                587725489986404551,
+                19.063036,
+                17.577732,
+                16.866707,
+                16.450323,
+                16.085379
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00019",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.1953,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587725576423342162,
+                258.11960572,
+                64.10911206,
+                18.568411,
+                17.754408,
+                17.456631,
+                17.184708,
+                17.086346
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00003",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.7123,
+            "result_rows": 32,
+            "first_rows_preview": [
+              [
+                588848899903258646,
+                158.44243817,
+                -0.03761529,
+                18.603363,
+                6
+              ],
+              [
+                587728949051261071,
+                158.45497512,
+                0.16154143,
+                17.509615,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00005",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 6.4514,
+            "result_rows": 78,
+            "first_rows_preview": [
+              [
+                78191511899996160,
+                587748928160792702,
+                19.968143,
+                18.762266,
+                18.395613,
+                0.082429
+              ],
+              [
+                77910042086473728,
+                588848898831483090,
+                19.05901,
+                17.837156,
+                17.280226,
+                0.082431
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00016",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.84,
+            "result_rows": 70,
+            "first_rows_preview": [
+              [
+                93111669756002304,
+                587725039017787395,
+                179.05783422,
+                -3.67152333,
+                15.012172,
+                0.021539,
+                2
+              ],
+              [
+                93111669760196608,
+                587725039017787416,
+                179.07713099,
+                -3.55277735,
+                16.450909,
+                -2.81286e-06,
+                1
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00010",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.8218,
+            "result_rows": 65,
+            "first_rows_preview": [
+              [
+                88323601559715840,
+                587722982299730249,
+                232.04272876,
+                -0.81182831,
+                16.075562,
+                0.08824,
+                2
+              ],
+              [
+                88323601572298752,
+                588848898861629514,
+                231.85691521,
+                -0.85290255,
+                18.095881,
+                -1.77853e-05,
+                6
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00004",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.785,
+            "result_rows": 41,
+            "first_rows_preview": [
+              [
+                88042195365396480,
+                588848898860712279,
+                229.77463615,
+                -0.8857356,
+                16.443869,
+                0.092261,
+                2
+              ],
+              [
+                88042195373785088,
+                587722982298747242,
+                229.80184507,
+                -0.82507762,
+                17.267551,
+                0.170707,
+                2
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00013",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.1884,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587734304339591816,
+                330.28216309,
+                -0.30903847,
+                22.369326,
+                21.602743,
+                19.918362,
+                18.828724,
+                18.285728
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00018",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.9292,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                170,
+                17.326569764705884
+              ],
+              [
+                6,
+                71,
+                18.89628143661972
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00008",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.2081,
+            "result_rows": 20,
+            "first_rows_preview": [
+              [
+                587725489987125505,
+                20.846748,
+                18.739473,
+                17.54571,
+                17.040173,
+                16.647478
+              ],
+              [
+                588848900992073862,
+                19.591814,
+                18.273718,
+                17.545759,
+                17.172258,
+                16.947144
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00006",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.1346,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                322,
+                17.12707204347826
+              ],
+              [
+                6,
+                62,
+                18.440654677419356
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00014",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.362,
+            "result_rows": 24,
+            "first_rows_preview": [
+              [
+                587728949049032849,
+                20.209213,
+                18.27264,
+                17.254545,
+                16.807085,
+                16.433008
+              ],
+              [
+                587722982822969590,
+                19.056606,
+                17.779837,
+                17.254587,
+                16.909924,
+                16.658381
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00001",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.177,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                588848899903455567,
+                158.88110026,
+                -0.05686199,
+                26.239973,
+                21.609167,
+                19.472525,
+                18.556305,
+                18.033949
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00011",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.5232,
+            "result_rows": 13,
+            "first_rows_preview": [
+              [
+                79034667084283904,
+                588848901519114313,
+                19.124563,
+                18.823578,
+                18.733612,
+                0.768115
+              ],
+              [
+                101553541922947072,
+                587725577501475047,
+                20.481369,
+                20.40917,
+                20.636955,
+                0.768146
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00017",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.3948,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                81006757609996288,
+                588848901524750512,
+                21.885206,
+                20.669384,
+                20.400465,
+                2.83101
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00009",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.4319,
+            "result_rows": 4,
+            "first_rows_preview": [
+              [
+                587731186734662454,
+                346.0520458,
+                0.28209877,
+                22.013716,
+                6
+              ],
+              [
+                587731186734661719,
+                346.06709424,
+                0.31294238,
+                19.144678,
+                6
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00015",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.692,
+            "result_rows": 44,
+            "first_rows_preview": [
+              [
+                587724649799614469,
+                192.9834624,
+                -2.07755606,
+                14.116698,
+                3
+              ],
+              [
+                587725041171366030,
+                192.99804394,
+                -2.04097509,
+                17.613749,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00020",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.5965,
+            "result_rows": 29,
+            "first_rows_preview": [
+              [
+                587725492136050925,
+                20.366791,
+                18.330132,
+                17.314121,
+                16.879852,
+                16.523273
+              ],
+              [
+                587725491064406359,
+                21.763332,
+                19.004538,
+                17.314163,
+                15.883868,
+                15.083133
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00012",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.7304,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                93,
+                17.417152516129033
+              ],
+              [
+                6,
+                18,
+                18.653843166666668
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          }
+        ]
+      },
+      "runtime_stats": {
+        "prediction_jobs": 0,
+        "prediction_requests": 0,
+        "queued_prediction_jobs": 0,
+        "completed_jobs": 0,
+        "dropped_jobs": 0,
+        "coalesced_jobs": 0,
+        "prediction_observations": 584,
+        "skipped_prediction_observations": 489,
+        "candidates_pruned_cached_or_pending": 0,
+        "candidates_pre_ranked_out": 0,
+        "hybrid_markov_jobs": 0,
+        "hybrid_semantic_jobs": 0,
+        "inference_ms_total": 0.0,
+        "inference_ms_max": 0.0,
+        "queue_wait_ms_total": 0.0,
+        "queue_wait_ms_max": 0.0,
+        "prefetch_read_ms_total": 0.0,
+        "prefetch_read_ms_max": 0.0,
+        "prefetch_read_errors": 0,
+        "stale_jobs_detected": 0,
+        "stale_jobs_dropped": 0,
+        "demand_misses_while_prefetch_in_flight": 0,
+        "oracle_alignment_misses": 0,
+        "worker_shutdown_clean": true,
+        "inference_ms_per_job": 0.0,
+        "queue_wait_ms_mean": 0.0,
+        "demand_requests": 588,
+        "cache_hits": 189,
+        "cache_misses": 399,
+        "pages_prefetched": 0,
+        "prefetch_bytes": 0,
+        "useful_prefetches": 0,
+        "wasted_prefetches": 0,
+        "evictions": 0,
+        "useful_prefetches_same_query": 0,
+        "useful_prefetches_cross_query": 0,
+        "demand_use_lead_time_ms_total": 0.0,
+        "demand_use_lead_time_ms_min": null,
+        "demand_use_lead_time_ms_max": null,
+        "capacity_pages": 512,
+        "resident_pages": 399,
+        "unused_prefetches_still_resident": 0,
+        "total_wasted_prefetches": 0,
+        "useful_prefetch_pct": 0.0,
+        "wasted_prefetch_evicted_pct": 0.0,
+        "unused_prefetch_resident_pct": 0.0,
+        "wasted_prefetch_total_pct": 0.0,
+        "prefetch_hit_coverage_pct": 0.0,
+        "cache_hit_pct": 32.143,
+        "demand_use_lead_time_ms_mean": null,
+        "demand_use_events_count": 0,
+        "prefetch_read_ms_mean": 0.0,
+        "storage_device": {
+          "demand_ios": 0,
+          "prefetch_ios": 0,
+          "demand_wait_ms_total": 0.0,
+          "demand_wait_ms_max": 0.0,
+          "prefetch_wait_ms_total": 0.0,
+          "prefetch_wait_ms_max": 0.0,
+          "device_busy_ms_total": 0.0,
+          "delay_ms": 0.0,
+          "enabled": false,
+          "demand_wait_ms_mean": 0.0,
+          "prefetch_wait_ms_mean": 0.0
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "queue_length": 0,
+        "strategy": "none",
+        "model_path": null,
+        "disabled_semantic_groups": [],
+        "miss_delay_ms_injected": 0.0,
+        "predict_on": "miss",
+        "predict_every": 4,
+        "max_score_candidates": 0,
+        "prediction_log_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\results\\runtime\\none\\predictions.jsonl",
+        "diagnostics_enabled": true,
+        "oracle_trace_queries": 0,
+        "oracle_miss_queries": 0,
+        "prefetch_workers": 1,
+        "worker_alive": false,
+        "worker_lifetime_ms": 27.986,
+        "worker_idle_before_close": true,
+        "worker_drain_ms": 0.429,
+        "worker_shutdown_ms": 0.254
+      }
+    },
+    "markov2": {
+      "metadata": {
+        "database_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\data\\sdss-dr7.sqlite",
+        "page_size": 4096,
+        "query_count": 20,
+        "seed": 501,
+        "cache_kib_requested": 128,
+        "sqlite_cache_size_pragma": null,
+        "mmap_size_effective_bytes": 0,
+        "stdlib_sqlite_version": "3.50.4",
+        "apsw_sqlite_version": "3.54.0",
+        "page_map_pages": 3855,
+        "page_map_scope": "complete dbstat map",
+        "trace_kind": "APSW VFS xRead requests; not a complete logical reference trace",
+        "physical_io_note": "A VFS xRead can be satisfied by the OS page cache; this trace does not prove physical disk I/O.",
+        "prefetch_config": {
+          "strategy": "markov2",
+          "candidate_index_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\models\\candidate_index.json",
+          "model_path": null,
+          "semantic": true,
+          "cache_pages": 512,
+          "prefetch_workers": 1,
+          "degree": 1,
+          "confidence_threshold": 0.7,
+          "queue_size": 64,
+          "predict_on": "miss",
+          "predict_every": 4,
+          "drop_stale_jobs": true,
+          "miss_delay_ms": 0,
+          "diagnostics_enabled": true
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "oracle_trace_path": null,
+        "oracle_miss_path": null,
+        "record_demand_reference": false,
+        "diagnostics_enabled": true,
+        "miss_delay_ms_injected": 0,
+        "mode": "real-storage-no-injected-delay",
+        "query_latency_ms": {
+          "median": 1.2318,
+          "p95": 4.2902,
+          "total": 35.9129,
+          "min": 0.2087,
+          "max": 10.1479
+        },
+        "end_to_end_wall_ms": 78.915,
+        "results": [
+          {
+            "query_id": "501-00007",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.2087,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587722982278693005,
+                184.03322868,
+                -0.7311568,
+                19.402534,
+                17.980291,
+                17.201159,
+                16.83926,
+                16.538919
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00002",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 4.2902,
+            "result_rows": 50,
+            "first_rows_preview": [
+              [
+                587731187268124896,
+                18.984722,
+                17.552324,
+                16.866692,
+                16.482512,
+                16.200138
+              ],
+              [
+                587725489986404551,
+                19.063036,
+                17.577732,
+                16.866707,
+                16.450323,
+                16.085379
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00019",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.4008,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587725576423342162,
+                258.11960572,
+                64.10911206,
+                18.568411,
+                17.754408,
+                17.456631,
+                17.184708,
+                17.086346
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00003",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.2285,
+            "result_rows": 32,
+            "first_rows_preview": [
+              [
+                588848899903258646,
+                158.44243817,
+                -0.03761529,
+                18.603363,
+                6
+              ],
+              [
+                587728949051261071,
+                158.45497512,
+                0.16154143,
+                17.509615,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00005",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 10.1479,
+            "result_rows": 78,
+            "first_rows_preview": [
+              [
+                78191511899996160,
+                587748928160792702,
+                19.968143,
+                18.762266,
+                18.395613,
+                0.082429
+              ],
+              [
+                77910042086473728,
+                588848898831483090,
+                19.05901,
+                17.837156,
+                17.280226,
+                0.082431
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00016",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.4402,
+            "result_rows": 70,
+            "first_rows_preview": [
+              [
+                93111669756002304,
+                587725039017787395,
+                179.05783422,
+                -3.67152333,
+                15.012172,
+                0.021539,
+                2
+              ],
+              [
+                93111669760196608,
+                587725039017787416,
+                179.07713099,
+                -3.55277735,
+                16.450909,
+                -2.81286e-06,
+                1
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00010",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.2034,
+            "result_rows": 65,
+            "first_rows_preview": [
+              [
+                88323601559715840,
+                587722982299730249,
+                232.04272876,
+                -0.81182831,
+                16.075562,
+                0.08824,
+                2
+              ],
+              [
+                88323601572298752,
+                588848898861629514,
+                231.85691521,
+                -0.85290255,
+                18.095881,
+                -1.77853e-05,
+                6
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00004",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.3934,
+            "result_rows": 41,
+            "first_rows_preview": [
+              [
+                88042195365396480,
+                588848898860712279,
+                229.77463615,
+                -0.8857356,
+                16.443869,
+                0.092261,
+                2
+              ],
+              [
+                88042195373785088,
+                587722982298747242,
+                229.80184507,
+                -0.82507762,
+                17.267551,
+                0.170707,
+                2
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00013",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.2781,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587734304339591816,
+                330.28216309,
+                -0.30903847,
+                22.369326,
+                21.602743,
+                19.918362,
+                18.828724,
+                18.285728
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00018",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.2351,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                170,
+                17.326569764705884
+              ],
+              [
+                6,
+                71,
+                18.89628143661972
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00008",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.7103,
+            "result_rows": 20,
+            "first_rows_preview": [
+              [
+                587725489987125505,
+                20.846748,
+                18.739473,
+                17.54571,
+                17.040173,
+                16.647478
+              ],
+              [
+                588848900992073862,
+                19.591814,
+                18.273718,
+                17.545759,
+                17.172258,
+                16.947144
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00006",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.6721,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                322,
+                17.12707204347826
+              ],
+              [
+                6,
+                62,
+                18.440654677419356
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00014",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.0459,
+            "result_rows": 24,
+            "first_rows_preview": [
+              [
+                587728949049032849,
+                20.209213,
+                18.27264,
+                17.254545,
+                16.807085,
+                16.433008
+              ],
+              [
+                587722982822969590,
+                19.056606,
+                17.779837,
+                17.254587,
+                16.909924,
+                16.658381
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00001",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.2699,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                588848899903455567,
+                158.88110026,
+                -0.05686199,
+                26.239973,
+                21.609167,
+                19.472525,
+                18.556305,
+                18.033949
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00011",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 2.5333,
+            "result_rows": 13,
+            "first_rows_preview": [
+              [
+                79034667084283904,
+                588848901519114313,
+                19.124563,
+                18.823578,
+                18.733612,
+                0.768115
+              ],
+              [
+                101553541922947072,
+                587725577501475047,
+                20.481369,
+                20.40917,
+                20.636955,
+                0.768146
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00017",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.5391,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                81006757609996288,
+                588848901524750512,
+                21.885206,
+                20.669384,
+                20.400465,
+                2.83101
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00009",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.6391,
+            "result_rows": 4,
+            "first_rows_preview": [
+              [
+                587731186734662454,
+                346.0520458,
+                0.28209877,
+                22.013716,
+                6
+              ],
+              [
+                587731186734661719,
+                346.06709424,
+                0.31294238,
+                19.144678,
+                6
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00015",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.1675,
+            "result_rows": 44,
+            "first_rows_preview": [
+              [
+                587724649799614469,
+                192.9834624,
+                -2.07755606,
+                14.116698,
+                3
+              ],
+              [
+                587725041171366030,
+                192.99804394,
+                -2.04097509,
+                17.613749,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00020",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.4803,
+            "result_rows": 29,
+            "first_rows_preview": [
+              [
+                587725492136050925,
+                20.366791,
+                18.330132,
+                17.314121,
+                16.879852,
+                16.523273
+              ],
+              [
+                587725491064406359,
+                21.763332,
+                19.004538,
+                17.314163,
+                15.883868,
+                15.083133
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00012",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.0291,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                93,
+                17.417152516129033
+              ],
+              [
+                6,
+                18,
+                18.653843166666668
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          }
+        ]
+      },
+      "runtime_stats": {
+        "prediction_jobs": 94,
+        "prediction_requests": 94,
+        "queued_prediction_jobs": 94,
+        "completed_jobs": 94,
+        "dropped_jobs": 0,
+        "coalesced_jobs": 0,
+        "prediction_observations": 584,
+        "skipped_prediction_observations": 490,
+        "candidates_pruned_cached_or_pending": 0,
+        "candidates_pre_ranked_out": 0,
+        "hybrid_markov_jobs": 0,
+        "hybrid_semantic_jobs": 0,
+        "inference_ms_total": 0.256,
+        "inference_ms_max": 0.0084,
+        "queue_wait_ms_total": 1212.7848999999994,
+        "queue_wait_ms_max": 20.7692,
+        "prefetch_read_ms_total": 0.8712,
+        "prefetch_read_ms_max": 0.204,
+        "prefetch_read_errors": 0,
+        "stale_jobs_detected": 46,
+        "stale_jobs_dropped": 46,
+        "demand_misses_while_prefetch_in_flight": 0,
+        "oracle_alignment_misses": 0,
+        "worker_shutdown_clean": true,
+        "inference_ms_per_job": 0.0027,
+        "queue_wait_ms_mean": 12.902,
+        "demand_requests": 588,
+        "cache_hits": 190,
+        "cache_misses": 398,
+        "pages_prefetched": 33,
+        "prefetch_bytes": 135168,
+        "useful_prefetches": 1,
+        "wasted_prefetches": 0,
+        "evictions": 0,
+        "useful_prefetches_same_query": 0,
+        "useful_prefetches_cross_query": 1,
+        "demand_use_lead_time_ms_total": 30.5235,
+        "demand_use_lead_time_ms_min": 30.523,
+        "demand_use_lead_time_ms_max": 30.523,
+        "capacity_pages": 512,
+        "resident_pages": 431,
+        "unused_prefetches_still_resident": 32,
+        "total_wasted_prefetches": 32,
+        "useful_prefetch_pct": 3.03,
+        "wasted_prefetch_evicted_pct": 0.0,
+        "unused_prefetch_resident_pct": 96.97,
+        "wasted_prefetch_total_pct": 96.97,
+        "prefetch_hit_coverage_pct": 0.17,
+        "cache_hit_pct": 32.313,
+        "demand_use_lead_time_ms_mean": 30.523,
+        "demand_use_events_count": 1,
+        "prefetch_read_ms_mean": 0.0264,
+        "storage_device": {
+          "demand_ios": 0,
+          "prefetch_ios": 0,
+          "demand_wait_ms_total": 0.0,
+          "demand_wait_ms_max": 0.0,
+          "prefetch_wait_ms_total": 0.0,
+          "prefetch_wait_ms_max": 0.0,
+          "device_busy_ms_total": 0.0,
+          "delay_ms": 0.0,
+          "enabled": false,
+          "demand_wait_ms_mean": 0.0,
+          "prefetch_wait_ms_mean": 0.0
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "queue_length": 0,
+        "strategy": "markov2",
+        "model_path": null,
+        "disabled_semantic_groups": [],
+        "miss_delay_ms_injected": 0.0,
+        "predict_on": "miss",
+        "predict_every": 4,
+        "max_score_candidates": 0,
+        "prediction_log_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\results\\runtime\\markov2\\predictions.jsonl",
+        "diagnostics_enabled": true,
+        "oracle_trace_queries": 0,
+        "oracle_miss_queries": 0,
+        "prefetch_workers": 1,
+        "worker_alive": false,
+        "worker_lifetime_ms": 48.236,
+        "worker_idle_before_close": true,
+        "worker_drain_ms": 9.259,
+        "worker_shutdown_ms": 0.189
+      }
+    },
+    "model_ranker": {
+      "metadata": {
+        "database_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\data\\sdss-dr7.sqlite",
+        "page_size": 4096,
+        "query_count": 20,
+        "seed": 501,
+        "cache_kib_requested": 128,
+        "sqlite_cache_size_pragma": null,
+        "mmap_size_effective_bytes": 0,
+        "stdlib_sqlite_version": "3.50.4",
+        "apsw_sqlite_version": "3.54.0",
+        "page_map_pages": 3855,
+        "page_map_scope": "complete dbstat map",
+        "trace_kind": "APSW VFS xRead requests; not a complete logical reference trace",
+        "physical_io_note": "A VFS xRead can be satisfied by the OS page cache; this trace does not prove physical disk I/O.",
+        "prefetch_config": {
+          "strategy": "model_ranker",
+          "candidate_index_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\models\\candidate_index.json",
+          "model_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\models\\hybrid_semantics.pt",
+          "semantic": true,
+          "cache_pages": 512,
+          "prefetch_workers": 1,
+          "degree": 1,
+          "confidence_threshold": 0.7,
+          "queue_size": 64,
+          "predict_on": "miss",
+          "predict_every": 4,
+          "drop_stale_jobs": true,
+          "miss_delay_ms": 0,
+          "diagnostics_enabled": true
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "oracle_trace_path": null,
+        "oracle_miss_path": null,
+        "record_demand_reference": false,
+        "diagnostics_enabled": true,
+        "miss_delay_ms_injected": 0,
+        "mode": "real-storage-no-injected-delay",
+        "query_latency_ms": {
+          "median": 1.5328,
+          "p95": 6.7557,
+          "total": 43.4261,
+          "min": 0.2135,
+          "max": 10.7558
+        },
+        "end_to_end_wall_ms": 660.915,
+        "results": [
+          {
+            "query_id": "501-00007",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.2135,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587722982278693005,
+                184.03322868,
+                -0.7311568,
+                19.402534,
+                17.980291,
+                17.201159,
+                16.83926,
+                16.538919
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00002",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 6.7557,
+            "result_rows": 50,
+            "first_rows_preview": [
+              [
+                587731187268124896,
+                18.984722,
+                17.552324,
+                16.866692,
+                16.482512,
+                16.200138
+              ],
+              [
+                587725489986404551,
+                19.063036,
+                17.577732,
+                16.866707,
+                16.450323,
+                16.085379
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00019",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.3696,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587725576423342162,
+                258.11960572,
+                64.10911206,
+                18.568411,
+                17.754408,
+                17.456631,
+                17.184708,
+                17.086346
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00003",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.3527,
+            "result_rows": 32,
+            "first_rows_preview": [
+              [
+                588848899903258646,
+                158.44243817,
+                -0.03761529,
+                18.603363,
+                6
+              ],
+              [
+                587728949051261071,
+                158.45497512,
+                0.16154143,
+                17.509615,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00005",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 10.7558,
+            "result_rows": 78,
+            "first_rows_preview": [
+              [
+                78191511899996160,
+                587748928160792702,
+                19.968143,
+                18.762266,
+                18.395613,
+                0.082429
+              ],
+              [
+                77910042086473728,
+                588848898831483090,
+                19.05901,
+                17.837156,
+                17.280226,
+                0.082431
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00016",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.8307,
+            "result_rows": 70,
+            "first_rows_preview": [
+              [
+                93111669756002304,
+                587725039017787395,
+                179.05783422,
+                -3.67152333,
+                15.012172,
+                0.021539,
+                2
+              ],
+              [
+                93111669760196608,
+                587725039017787416,
+                179.07713099,
+                -3.55277735,
+                16.450909,
+                -2.81286e-06,
+                1
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00010",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.5424,
+            "result_rows": 65,
+            "first_rows_preview": [
+              [
+                88323601559715840,
+                587722982299730249,
+                232.04272876,
+                -0.81182831,
+                16.075562,
+                0.08824,
+                2
+              ],
+              [
+                88323601572298752,
+                588848898861629514,
+                231.85691521,
+                -0.85290255,
+                18.095881,
+                -1.77853e-05,
+                6
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00004",
+            "template_id": "sdss_plate_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 1.8567,
+            "result_rows": 41,
+            "first_rows_preview": [
+              [
+                88042195365396480,
+                588848898860712279,
+                229.77463615,
+                -0.8857356,
+                16.443869,
+                0.092261,
+                2
+              ],
+              [
+                88042195373785088,
+                587722982298747242,
+                229.80184507,
+                -0.82507762,
+                17.267551,
+                0.170707,
+                2
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00013",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.3617,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                587734304339591816,
+                330.28216309,
+                -0.30903847,
+                22.369326,
+                21.602743,
+                19.918362,
+                18.828724,
+                18.285728
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00018",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.5232,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                170,
+                17.326569764705884
+              ],
+              [
+                6,
+                71,
+                18.89628143661972
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00008",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.2842,
+            "result_rows": 20,
+            "first_rows_preview": [
+              [
+                587725489987125505,
+                20.846748,
+                18.739473,
+                17.54571,
+                17.040173,
+                16.647478
+              ],
+              [
+                588848900992073862,
+                19.591814,
+                18.273718,
+                17.545759,
+                17.172258,
+                16.947144
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00006",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.849,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                322,
+                17.12707204347826
+              ],
+              [
+                6,
+                62,
+                18.440654677419356
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00014",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.3665,
+            "result_rows": 24,
+            "first_rows_preview": [
+              [
+                587728949049032849,
+                20.209213,
+                18.27264,
+                17.254545,
+                16.807085,
+                16.433008
+              ],
+              [
+                587722982822969590,
+                19.056606,
+                17.779837,
+                17.254587,
+                16.909924,
+                16.658381
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00001",
+            "template_id": "sdss_object",
+            "workload_family": "point_lookup",
+            "elapsed_ms": 0.256,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                588848899903455567,
+                158.88110026,
+                -0.05686199,
+                26.239973,
+                21.609167,
+                19.472525,
+                18.556305,
+                18.033949
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00011",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 3.2635,
+            "result_rows": 13,
+            "first_rows_preview": [
+              [
+                79034667084283904,
+                588848901519114313,
+                19.124563,
+                18.823578,
+                18.733612,
+                0.768115
+              ],
+              [
+                101553541922947072,
+                587725577501475047,
+                20.481369,
+                20.40917,
+                20.636955,
+                0.768146
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00017",
+            "template_id": "sdss_redshift_join",
+            "workload_family": "indexed_join",
+            "elapsed_ms": 0.7491,
+            "result_rows": 1,
+            "first_rows_preview": [
+              [
+                81006757609996288,
+                588848901524750512,
+                21.885206,
+                20.669384,
+                20.400465,
+                2.83101
+              ]
+            ],
+            "plan_class": "join",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00009",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 0.783,
+            "result_rows": 4,
+            "first_rows_preview": [
+              [
+                587731186734662454,
+                346.0520458,
+                0.28209877,
+                22.013716,
+                6
+              ],
+              [
+                587731186734661719,
+                346.06709424,
+                0.31294238,
+                19.144678,
+                6
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00015",
+            "template_id": "sdss_sky_window",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.4298,
+            "result_rows": 44,
+            "first_rows_preview": [
+              [
+                587724649799614469,
+                192.9834624,
+                -2.07755606,
+                14.116698,
+                3
+              ],
+              [
+                587725041171366030,
+                192.99804394,
+                -2.04097509,
+                17.613749,
+                3
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00020",
+            "template_id": "sdss_magnitudes",
+            "workload_family": "range_scan",
+            "elapsed_ms": 2.4668,
+            "result_rows": 29,
+            "first_rows_preview": [
+              [
+                587725492136050925,
+                20.366791,
+                18.330132,
+                17.314121,
+                16.879852,
+                16.523273
+              ],
+              [
+                587725491064406359,
+                21.763332,
+                19.004538,
+                17.314163,
+                15.883868,
+                15.083133
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          },
+          {
+            "query_id": "501-00012",
+            "template_id": "sdss_field_summary",
+            "workload_family": "range_scan",
+            "elapsed_ms": 1.4162,
+            "result_rows": 2,
+            "first_rows_preview": [
+              [
+                3,
+                93,
+                17.417152516129033
+              ],
+              [
+                6,
+                18,
+                18.653843166666668
+              ]
+            ],
+            "plan_class": "search_index",
+            "seed": 501
+          }
+        ]
+      },
+      "runtime_stats": {
+        "prediction_jobs": 95,
+        "prediction_requests": 95,
+        "queued_prediction_jobs": 95,
+        "completed_jobs": 95,
+        "dropped_jobs": 0,
+        "coalesced_jobs": 0,
+        "prediction_observations": 584,
+        "skipped_prediction_observations": 489,
+        "candidates_pruned_cached_or_pending": 0,
+        "candidates_pre_ranked_out": 0,
+        "hybrid_markov_jobs": 0,
+        "hybrid_semantic_jobs": 0,
+        "inference_ms_total": 78.8039,
+        "inference_ms_max": 6.6394,
+        "queue_wait_ms_total": 3536.5087999999996,
+        "queue_wait_ms_max": 84.0466,
+        "prefetch_read_ms_total": 0.1372,
+        "prefetch_read_ms_max": 0.1086,
+        "prefetch_read_errors": 0,
+        "stale_jobs_detected": 44,
+        "stale_jobs_dropped": 44,
+        "demand_misses_while_prefetch_in_flight": 0,
+        "oracle_alignment_misses": 0,
+        "worker_shutdown_clean": true,
+        "inference_ms_per_job": 0.8295,
+        "queue_wait_ms_mean": 37.2264,
+        "demand_requests": 588,
+        "cache_hits": 189,
+        "cache_misses": 399,
+        "pages_prefetched": 2,
+        "prefetch_bytes": 8192,
+        "useful_prefetches": 0,
+        "wasted_prefetches": 0,
+        "evictions": 0,
+        "useful_prefetches_same_query": 0,
+        "useful_prefetches_cross_query": 0,
+        "demand_use_lead_time_ms_total": 0.0,
+        "demand_use_lead_time_ms_min": null,
+        "demand_use_lead_time_ms_max": null,
+        "capacity_pages": 512,
+        "resident_pages": 401,
+        "unused_prefetches_still_resident": 2,
+        "total_wasted_prefetches": 2,
+        "useful_prefetch_pct": 0.0,
+        "wasted_prefetch_evicted_pct": 0.0,
+        "unused_prefetch_resident_pct": 100.0,
+        "wasted_prefetch_total_pct": 100.0,
+        "prefetch_hit_coverage_pct": 0.0,
+        "cache_hit_pct": 32.143,
+        "demand_use_lead_time_ms_mean": null,
+        "demand_use_events_count": 0,
+        "prefetch_read_ms_mean": 0.0686,
+        "storage_device": {
+          "demand_ios": 0,
+          "prefetch_ios": 0,
+          "demand_wait_ms_total": 0.0,
+          "demand_wait_ms_max": 0.0,
+          "prefetch_wait_ms_total": 0.0,
+          "prefetch_wait_ms_max": 0.0,
+          "device_busy_ms_total": 0.0,
+          "delay_ms": 0.0,
+          "enabled": false,
+          "demand_wait_ms_mean": 0.0,
+          "prefetch_wait_ms_mean": 0.0
+        },
+        "storage_model": "independent",
+        "drop_stale_jobs": true,
+        "queue_length": 0,
+        "strategy": "model_ranker",
+        "model_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\models\\hybrid_semantics.pt",
+        "disabled_semantic_groups": [],
+        "miss_delay_ms_injected": 0.0,
+        "predict_on": "miss",
+        "predict_every": 4,
+        "max_score_candidates": 0,
+        "prediction_log_path": "D:\\shortly-source\\OS Project\\paper-dataset-experiments\\selep-sdss-dr7-20261027\\results\\runtime\\model_ranker\\predictions.jsonl",
+        "diagnostics_enabled": true,
+        "oracle_trace_queries": 0,
+        "oracle_miss_queries": 0,
+        "prefetch_workers": 1,
+        "worker_alive": false,
+        "worker_lifetime_ms": 132.22,
+        "worker_idle_before_close": true,
+        "worker_drain_ms": 85.341,
+        "worker_shutdown_ms": 0.596
+      }
+    }
+  }
+}

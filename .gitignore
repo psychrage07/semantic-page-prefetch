@@ -1,5 +1,6 @@
 # Tool metadata
 .freebuff/
+local-preview.*.log
 
 # Local environment variables (keep shareable templates)
 .env

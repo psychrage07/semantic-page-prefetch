@@ -1,0 +1,18 @@
+{
+  "passed": true,
+  "original_project_files_checked": 124,
+  "original_project_unchanged": true,
+  "source_snapshot_unchanged": true,
+  "database_full_sha256_unchanged": true,
+  "sql_parameter_splits_disjoint": true,
+  "all_test_transitions_scored": true,
+  "same_targets_for_all_policies": true,
+  "candidate_index_rebuilt_from_training_only": true,
+  "offline_runtime_rank_parity_checked": true,
+  "frozen_checkpoint_hashes_match": true,
+  "query_counts": {
+    "training": 600,
+    "validation": 200,
+    "test": 300
+  }
+}

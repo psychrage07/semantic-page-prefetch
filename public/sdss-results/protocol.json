@@ -1,0 +1,67 @@
+{
+  "paper": "SeLeP: Learning Based Semantic Prefetching for Exploratory Database Workloads",
+  "doi": "10.14778/3659437.3659458",
+  "review_2_reference": 3,
+  "review_3_reference": 1,
+  "paper_url": "https://www.vldb.org/pvldb/vol17/p2064-zirak.pdf",
+  "authors_repository": "https://github.com/fzirak/SeLeP",
+  "dataset": "Sloan Digital Sky Survey Data Release 7 (SDSS DR7)",
+  "data_kind": "Real public astronomy records, bounded ordered subset; not synthetic records",
+  "scope": "New SQLite workload adapted from official SDSS sample-query patterns; not original SeLeP logs, model, or PostgreSQL benchmark reproduction",
+  "selection_bias": "First 50000 matched spectroscopic records ordered by specObjID; not a random or representative sample of all DR7",
+  "endpoint": "https://skyserver.sdss.org/dr7/en/tools/search/x_sql.asp",
+  "download_sql": "SELECT TOP 50000 p.objID,p.ra,p.dec,p.u,p.g,p.r,p.i,p.z,p.type,p.run,p.rerun,p.camcol,p.field,p.extinction_r,\ns.specObjID,s.z AS redshift,s.zErr,s.specClass,s.plate,s.mjd,s.fiberID\nFROM SpecObj AS s JOIN PhotoObj AS p ON p.objID=s.bestObjID ORDER BY s.specObjID",
+  "workload_seeds": {
+    "training": {
+      "101": 200,
+      "102": 200,
+      "103": 200
+    },
+    "validation": {
+      "201": 100,
+      "202": 100
+    },
+    "test": {
+      "921": 60,
+      "922": 60,
+      "923": 60,
+      "924": 60,
+      "925": 60
+    }
+  },
+  "split": "SHA256 of template_id and complete SQL parameter tuple modulo 10: train 0-6, validation 7, test 8-9; unique combinations across executions; familiar templates, held-out combinations, not disjoint astronomical objects",
+  "model": "Existing selected hybrid_semantics architecture, newly fitted to SDSS traces; original e-commerce weights are not reused",
+  "config": {
+    "variant": "b2",
+    "objective": "listwise",
+    "hidden": 64,
+    "epochs": 16,
+    "learning_rate": 0.001,
+    "weight_decay": 0.0001,
+    "prior_weight": 1.0
+  },
+  "training_seed": 101,
+  "candidate_strategy": "layout",
+  "max_candidates": 128,
+  "training_validation_max_transitions_per_query": 16,
+  "test_transitions": "All eligible transitions, no sampling; process one query at a time to bound RAM",
+  "selection": "Fixed architecture and candidate settings; validation macro Top-1 selects checkpoint epoch including explicit epoch-zero Markov fallback; no tuning from test scores",
+  "controls": [
+    "Markov-1",
+    "Markov-2",
+    "sequential",
+    "history-only A (BCE)",
+    "semantic B (BCE)",
+    "hybrid without semantics"
+  ],
+  "metrics": [
+    "query-average Top-1",
+    "transition-weighted Top-1",
+    "transition-weighted Top-5",
+    "candidate recall"
+  ],
+  "cache": "SQLite pager 128 KiB, mmap disabled, shrink_memory between queries; OS cache is not reset",
+  "runtime_smoke": "20 additional seed-501 queries from training parameter buckets; paired none/Markov-2/new neural checkpoint, no injected delay; correctness and operational check only",
+  "test_policy": "All results and failures retained; candidate misses counted as errors; no model selection from test outcomes",
+  "isolation": "Sibling folder outside semantic-page-prefetch, copied predictor source, distinct DB/checkpoints/outputs; existing frontend and research artifacts unchanged"
+}

@@ -46,6 +46,8 @@ def evaluate(out: Path):
     if predictor.config.no_semantics:
         raise ValueError("Live evaluation requires the selected semantic checkpoint")
     policies = {"model_ranker": [], "markov1": [], "markov2": []}
+    if "context_policy" in plan:
+        policies["context"] = []
     samples = []
     for seed in plan["seeds"]:
         source = out / f"seed-{seed}" / "none"
@@ -61,6 +63,10 @@ def evaluate(out: Path):
                 first = index.successors.get(history[-1], [])
                 second = index.second_order.get(f"{history[-2]}:{history[-1]}", []) if len(history) >= 2 else []
                 rankings = {"model_ranker": [int(page) for page, _ in ranked], "markov1": first, "markov2": second or first}
+                if "context" in policies:
+                    from selective_context import context_action
+                    action, _ = context_action(index, history, seq["workload_family"], plan["context_policy"])
+                    rankings["context"] = second if action == "markov2" else first if action == "markov1" else rankings["model_ranker"] if action == "neural" else []
                 for policy, predictions in rankings.items():
                     policies[policy].append({"query_id": query_id, "family": seq["workload_family"],
                         "top1": bool(predictions and predictions[0] == target), "top5": target in predictions[:5],

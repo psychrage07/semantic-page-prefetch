@@ -18,7 +18,7 @@ BACKEND = Path(__file__).resolve().parent
 FROZEN = BACKEND / "runs/neural-improvement-20261020/frozen-final"
 DATABASE = BACKEND / "runs/large-branch-20261015/pagewise-large.sqlite"
 POLICY = BACKEND / "runs/neural-improvement-20261020/runtime-pilot-optimized/policy.json"
-POLICIES = {"none": "No prefetch", "markov2": "Markov-2", "model_ranker": "Selected neural hybrid"}
+POLICIES = {"none": "No prefetch", "markov2": "Markov-2", "model_ranker": "Selected neural hybrid", "context": "Context-filtered policy"}
 
 
 def sha(path: Path) -> str:
@@ -69,7 +69,9 @@ def verify(out: Path, queries: int, seed: int):
     index["static_metadata_path"] = str(FROZEN / "static-metadata.npz")
     (model / "candidate_index.json").write_text(json.dumps(index), encoding="utf-8")
     shutil.copyfile(FROZEN / "params/page_map.json", model / "page_map.json")
-    plan = {"schema_version": 1, **evidence, "queries_per_seed": queries, "seeds": [seed, seed + 1],
+    from workspace import context_configuration
+    plan = {"schema_version": 1, **evidence, "policies": list(POLICIES), "context_policy": context_configuration("research"),
+            "queries_per_seed": queries, "seeds": [seed, seed + 1],
             "run_order": {str(value): order(value) for value in [seed, seed + 1]},
             "scope": "Fresh live workload; values may overlap training. Demonstration, not a new held-out confirmation.",
             "diagnostics_enabled": True, "miss_delay_ms": 0.0}
@@ -99,6 +101,11 @@ def run_policy(out: Path, policy: str, seed: int, queries: int):
               "drop_stale_jobs": True, "diagnostics_enabled": True, "prefetch_workers": 1}
     if policy == "model_ranker":
         config.update(plan["settings"])
+    if policy == "context":
+        from pagewise import runner
+        from selective_prefetch import install_runtime
+        install_runtime(runner, "context", plan["context_policy"])
+        config.update({"strategy": "model_ranker", "model_path": str(checkpoint), "predict_every": 4})
     print(f"Running {POLICIES[policy]}: {queries} actual queries, workload seed {seed}", flush=True)
     trace_workload(DATABASE, target, query_count=queries, seed=seed, cache_kib=512, prefetch_config=config)
     stats = json.loads((target / "runtime_stats.json").read_text(encoding="utf-8"))
@@ -117,7 +124,8 @@ def summarize(out: Path):
     rows = []
     samples = []
     workload_ids: dict[int, str] = {}
-    for policy, label in POLICIES.items():
+    for policy in plan.get("policies", ["none", "markov2", "model_ranker"]):
+        label = POLICIES[policy]
         times, jobs, prefetched, useful = [], 0, 0, 0
         demand, hits, unused, inference_ms = 0, 0, 0, 0.0
         for seed in plan["seeds"]:

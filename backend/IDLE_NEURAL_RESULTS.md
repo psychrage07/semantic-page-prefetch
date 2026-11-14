@@ -1,5 +1,7 @@
 # Idle neural hybrid: implementation and measured pilot
 
+**Follow-up:** [CPU optimization, expanded evaluation and local frontend integration](IDLE_OPTIMIZATION_RESULTS.md) records the separate November 14 work. The pilot numbers below remain unchanged.
+
 The idle-time approach is now implemented for Pagewise's semantic neural-Markov model as **P4**. Instead of predicting repeatedly during a query, it uses completed-query history to rank likely early misses of the next query. A bounded worker reads those pages during the idle interval. New query arrival cancels further speculative admission without waiting for inference to finish. Cached/pending pages are excluded before scoring; an eight-page unused-prefetch quota and hot-page protection limit speculative cache occupancy.
 
 This is a newly trained query-level adaptation using the existing B2 semantic features and width-64 MLP, combined with a query-level Markov prior. It has its own checkpoints. The original selected hybrid, database, frozen core source and frontend research results remain unchanged. P4 has not been wired into the browser's demo selector in this phase.

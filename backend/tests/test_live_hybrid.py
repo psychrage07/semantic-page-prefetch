@@ -8,12 +8,12 @@ import local_lab
 
 def test_trained_hybrid_plan_runs_each_policy_on_paired_seeds_without_training():
     steps, labels = local_lab.hybrid_steps(local_lab.LAB / "test-hybrid-plan", 20, 123456)
-    assert len(steps) == len(labels) == 9
+    assert len(steps) == len(labels) == 11
     assert steps[0][1] == "verify"
     assert steps[-1][1] == "summarize"
     assert steps[-2][1] == "evaluate"
     pairs = [(step[step.index("--seed") + 1], step[step.index("--policy") + 1]) for step in steps[1:-2]]
-    assert set(pairs) == {(str(seed), policy) for seed in [123456, 123457] for policy in ["none", "markov2", "model_ranker"]}
+    assert set(pairs) == {(str(seed), policy) for seed in [123456, 123457] for policy in ["none", "markov2", "model_ranker", "context"]}
     assert not any("train" in step for step in steps)
 
 

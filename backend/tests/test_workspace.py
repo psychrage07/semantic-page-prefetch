@@ -107,6 +107,62 @@ def test_actual_sql_benchmark_preserves_database_and_writes_artifacts(generated_
         assert len(list(csv.DictReader(handle))) == 3
 
 
+def test_small_hybrid_uses_matching_checkpoint_for_sql_and_accuracy(generated_demo, tmp_path, monkeypatch):
+    from dataclasses import asdict
+    import torch
+    from pagewise import ml_variants as ML
+    from pagewise.dataset import load_jsonl
+    from pagewise.models import CandidateIndex, page_map_digest
+    from pagewise.offline import load_cases
+    from pagewise.ranking import RankerConfig, build_groups, fit_parameter_scales
+    from small_hybrid import train_small_ranker
+
+    lab, root = generated_demo
+    monkeypatch.setattr(workspace, "LAB", lab)
+    train = load_jsonl(root / "models/train_sequences.jsonl")
+    val = load_jsonl(root / "models/validation_sequences.jsonl")
+    metadata = json.loads((root / "trace/page_map.json").read_text(encoding="utf-8"))
+    cases = load_cases(root / "trace/workload.jsonl")
+    index = CandidateIndex.build(train, 32, strategy="layout", page_map=metadata,
+                                 layout_database_path=str(root / "pagewise-demo.sqlite"))
+    index.page_map_sha256 = page_map_digest(metadata)
+    counts = ML.build_training_transition_counts(train, max_candidates=32)
+    scales = fit_parameter_scales(train, cases)
+    config = RankerConfig("hybrid_semantics", hidden=16, epochs=1, prior_weight=1.0)
+    training = build_groups(train, index, metadata, counts, config, cases, scales, max_per_query=8)
+    validation = build_groups(val, index, metadata, counts, config, cases, scales, max_per_query=8)
+    model, fit = train_small_ranker(training, validation, config)
+    ranker_dir = root / "selected-hybrid"
+    ranker_dir.mkdir()
+    workspace.write_json(ranker_dir / "candidate_index.json", index.to_json())
+    workspace.write_json(ranker_dir / "page_map.json", metadata)
+    torch.save({"config": asdict(config), "state_dict": model.state_dict(), "input_dim": training["x"].shape[-1],
+                "normalization_max_page": index.max_page, "counts": counts, "parameter_scales": scales, "fit": fit},
+               ranker_dir / "model_ranker.pt")
+    workspace.write_json(ranker_dir / "evaluation.json", {"neural_residual_trained": True,
+        "checkpoint_sha256": hashlib.sha256((ranker_dir / "model_ranker.pt").read_bytes()).hexdigest()})
+    assert "model_ranker" in workspace.resolve_database(root.name)["policies"]
+    request = workspace.validate_request({"database": root.name, "sql": "SELECT order_id FROM orders ORDER BY order_id LIMIT 120",
+                                           "policies": ["none", "markov2", "model_b", "model_ranker", "context"], "repeats": 2})
+    out = tmp_path / "hybrid-run"
+    out.mkdir()
+    workspace.write_json(out / "request.json", request)
+    workspace.run(out)
+    result = json.loads((out / "workspace-result.json").read_text(encoding="utf-8"))
+    assert result["identical_row_order_and_values"]
+    assert result["evaluation"]["primary_policy"] == "model_ranker"
+    assert {"model_ranker", "model_b", "markov2", "context"} <= result["evaluation"]["policies"].keys()
+    assert result["evaluation"]["policies"]["model_ranker"]["transitions"] == result["evaluation"]["scored_transitions"]
+    assert (out / "model/selected-hybrid/model_ranker.pt").read_bytes() == (ranker_dir / "model_ranker.pt").read_bytes()
+    assert json.loads((out / "model/selected-hybrid/candidate_index.json").read_text())["max_candidates"] == 32
+    assert json.loads((out / "model/candidate_index.json").read_text())["max_candidates"] == 8
+    context = next(row for row in result["results"] if row["policy"] == "context")
+    assert context["runtime"]["selective_policy"] == "context"
+    assert context["runtime"]["policy_neural"] == 0
+    assert context["runtime"]["worker_shutdown_clean"]
+    assert result["evaluation"]["policies"]["context"]["transitions"] == result["evaluation"]["scored_transitions"]
+
+
 def test_result_cap_is_explicit_and_real_values_are_exported(generated_demo, tmp_path, monkeypatch):
     lab, root = generated_demo
     monkeypatch.setattr(workspace, "LAB", lab)

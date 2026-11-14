@@ -86,6 +86,12 @@ The **Research results** tab (`/?view=neural`) displays the separate fresh study
 
 ## Testing
 
+The latest local implementation adds **Live demonstration → Test idle neural hybrid**, with saved P4 weights, real SQL/VFS execution, visible terminal output, measured CPU/usefulness comparisons and downloads. Matching local checkpoints and prepared experiment plans are required; missing artifacts disable this mode with a reason.
+
+See [idle CPU optimization and expanded evaluation](backend/IDLE_OPTIMIZATION_RESULTS.md) and [SDSS cross-dataset verification](backend/SDSS_CROSS_DATASET_RESULTS.md). CPU savings were reproduced on SDSS; additional query-latency gains were inconsistent, and frozen source weights transferred poorly on the first-miss ranking check. All controls and limitations remain in the reports. Original studies are preserved. The latest full backend check passed 168 tests; TypeScript and the production frontend build also passed.
+
+Databases, checkpoints and raw experiment directories remain local ignored artifacts. Curated dashboard exports and download bundles are included in the repository.
+
 ```powershell
 cd backend
 python -m pip install -e ".[test]"
@@ -99,3 +105,22 @@ The VFS integration test is skipped when APSW is unavailable. Run `pagewise chec
 After extracting the project, open PowerShell in `backend`, create/activate a Python 3.12 virtual environment, install `-e ".[test]"`, and run `python -m pagewise.cli check-env`. Then run `pytest -q` and `./scripts/run_smoke.ps1 -Queries 150`. The VFS test must pass on your experiment machine before treating any page trace or prefetch result as validated.
 
 Prediction accuracy is the primary dashboard comparison. Live models and small demos show Top-1/Top-5 cards; interactive SQL computes fresh accuracy from actual traces after execution. Runtime values remain in expandable details and downloads. See the accuracy-reporting section in [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) for weighting, interactive sampling and evaluation scope.
+
+## SDSS dataset results
+
+Open **SDSS dataset results** (`/?view=sdss`) for the separate real-data experiment linked to the SeLeP paper, cited in Reviews 2 and 3. The page loads verified measurements from `public/pagewise-sdss-study.json`: all seven predictors, query-average and transition Top-1, Top-5, candidate coverage, six query-type breakdowns, training histories, actual prediction samples, uncertainty, runtime diagnostics, and downloadable raw traces/logs. Accuracy is prominent; training and runtime details are expandable. Downloads work without the Python bridge.
+
+The experiment imported 50,000 actual SDSS DR7 matched records into a separate 15.79 MB SQLite database. It used 600 training, 200 validation and 300 held-out-parameter test queries. All 12,639 test transitions were scored: neural hybrid 35.32% query-average Top-1, Markov-2 27.32%, with a 7.99-point difference before rounding. These are results for a bounded non-random subset and newly generated SQLite queries, not a reproduction of SeLeP's original PostgreSQL experiment. The original 8.62 GB study, live demo modes and saved weights remain separate.
+
+Data, training, and new model weights stay outside the repository in `../paper-dataset-experiments/selep-sdss-dr7-20261027/`. To refresh the frontend export from those verified artifacts:
+
+```powershell
+.\backend\.venv\Scripts\python.exe scripts\export-sdss-study.py --experiment "..\paper-dataset-experiments\selep-sdss-dr7-20261027"
+npm run build
+```
+
+The exporter verifies source hashes and recomputes scores from per-query hit counts. It copies measured outputs only; it does not train models, copy databases/checkpoint weights into the frontend, or modify the external experiment. See [the saved SDSS report](public/sdss-results/RESULTS.md).
+
+The overview and research pages also show the separate selective-policy latency study. The comparison includes the earlier neural hybrid and no-prefetch baseline, the number of prefetched/useful pages, both delay conditions and paired confidence intervals. The faster combined policy prefetched zero pages, so its result does not establish a useful-prefetch speedup. The context-filtered alternative did prefetch pages but did not establish a gain over no prefetch. `npm run build` exports the committed measured study and report from `backend/` to `public/` before building.
+
+Live trained-model, small-demo, SDSS, and interactive SQL results each show their own measured query times. The small demo uses the median of trial medians; the other cards use mean query time. These measurements are not pooled across datasets, runs, or methods. Each card shows a no-prefetch baseline when available and avoids claiming a comparison when the SQL result streams differ.

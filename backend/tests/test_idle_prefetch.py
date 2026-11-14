@@ -171,3 +171,19 @@ def test_real_sql_delay_condition_routes_demand_through_shared_device(idle_files
     assert report["runtime"]["storage_device"]["device_busy_ms_total"] > 0
     assert report["demand_read_bytes"] > 0
     assert all(row["rows"] == 10 for row in rows)
+
+
+def test_real_sql_records_each_requested_gap_without_passing_future_arrivals_to_predictor(idle_files):
+    from idle_experiment import execute
+    from pagewise.workloads import QueryCase
+    database, models = idle_files
+    cases = [QueryCase(f"V{i}", "scan", "scan", "SELECT length(x) FROM sample LIMIT 1", ()) for i in range(3)]
+    model = QueryMarkov().fit([record("scan", [2]), record("scan", [3])])
+    report, rows, _ = execute(database, models, models / "varying-gaps", cases, policy="P3",
+                              query_model=model, gap_schedule=[0, 5])
+    assert [row["configured_gap_ms"] for row in rows[1:]] == [0, 5]
+    assert report["gap_schedule_ms"] == [0, 5]
+    assert rows[2]["gap_observed_ms"] >= 5
+    assert report["runtime"]["worker_shutdown_clean"]
+    with pytest.raises(ValueError, match="one nonnegative gap"):
+        execute(database, models, models / "invalid-gaps", cases, gap_schedule=[-1])

@@ -29,11 +29,12 @@ def test_required_arguments_and_path_boundaries():
     ]
 
 
-def test_demo_pipeline_is_seven_real_cli_steps():
+def test_demo_pipeline_includes_fresh_selected_hybrid():
     root = local_lab.LAB / "test-plan"
     steps = local_lab.demo_steps(root, 12)
     assert [step[0] for step in steps] == [
-        "generate-db", "trace", "build-sequences", "train", "evaluate", "run-suite", "dashboard-export"
+        "generate-db", "trace", "build-sequences", "train", "evaluate", "run-suite", "dashboard-export", "local:small-hybrid"
     ]
-    assert steps[-1][-1] == str(root / "dashboard.json")
+    assert steps[-2][-1] == str(root / "dashboard.json")
+    assert steps[-1][1:] == ["--run-dir", str(root)]
     assert all(Path(part).is_absolute() for step in steps for part in step if part.startswith(str(local_lab.BACKEND)))

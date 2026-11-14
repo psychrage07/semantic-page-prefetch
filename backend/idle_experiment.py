@@ -109,7 +109,9 @@ class StageProbe:
 
 
 def execute(database, model_dir, out, cases, *, policy="P0", cache_pages=32, gap_ms=0,
-            delay_ms=0, query_model=None, max_pages=16, min_confidence=0.25):
+            delay_ms=0, query_model=None, max_pages=16, min_confidence=0.25, gap_schedule=None):
+    if gap_schedule is not None and (len(gap_schedule) != len(cases) - 1 or any(g < 0 for g in gap_schedule)):
+        raise ValueError("Supply one nonnegative gap per query boundary")
     out = Path(out)
     out.mkdir(parents=True, exist_ok=False)
     page_size = read_page_size(database)
@@ -147,10 +149,11 @@ def execute(database, model_dir, out, cases, *, policy="P0", cache_pages=32, gap
         workload_started, cpu_started = time.perf_counter_ns(), time.process_time_ns()
         previous_end = None
         for number, case in enumerate(cases):
+            requested_gap = gap_schedule[number - 1] if gap_schedule is not None and number else gap_ms
             if previous_end is not None:
                 # This is a controlled think-time condition, not a measured
                 # claim about real users. The predictor never receives it.
-                remaining = previous_end + int(gap_ms * 1e6) - time.perf_counter_ns()
+                remaining = previous_end + int(requested_gap * 1e6) - time.perf_counter_ns()
                 if remaining > 0:
                     time.sleep(remaining / 1e9)
             arrival = time.perf_counter_ns()
@@ -172,8 +175,8 @@ def execute(database, model_dir, out, cases, *, policy="P0", cache_pages=32, gap
                    "result_sha256": digest.hexdigest(), "arrival_ns": arrival, "end_ns": ended,
                    "elapsed_ms": (ended - arrival) / 1e6,
                    "gap_observed_ms": (arrival - previous_end) / 1e6 if previous_end is not None else None,
-                   "configured_gap_ms": gap_ms,
-                   "arrival_lateness_ms": max(0, (arrival - previous_end) / 1e6 - gap_ms) if previous_end is not None else 0}
+                   "configured_gap_ms": requested_gap,
+                   "arrival_lateness_ms": max(0, (arrival - previous_end) / 1e6 - requested_gap) if previous_end is not None else 0}
             rows.append(row)
             records.append({"session_id": out.name, "query_id": case.query_id,
                             "template_id": case.template_id, "pages": demanded,
@@ -228,6 +231,7 @@ def execute(database, model_dir, out, cases, *, policy="P0", cache_pages=32, gap
               "worker_shutdown_ms": shutdown_ms, "demand_read_bytes": demand_bytes,
               "useful_idle_pages_inserted_before_query_arrival": timely_uses if query_model else None,
               "cache_pages": cache_pages, "configured_gap_ms": gap_ms, "injected_delay_ms": delay_ms,
+              "gap_schedule_ms": gap_schedule,
               "observed_gap_mean_ms": statistics.mean(gaps) if gaps else None,
               "gap_windows_at_least_ms": {str(k): sum(value >= k for value in gaps) for k in (25, 50, 100)},
               "stage_profile": dict(stage_probe.timings) if stage_probe else {}, "runtime": stats}

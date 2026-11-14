@@ -1,0 +1,12 @@
+{
+  "passed": true,
+  "policies_per_query": 7,
+  "test_queries": 300,
+  "transitions_per_policy": 12639,
+  "aggregate_scores_recomputed": true,
+  "training_only_checkpoint_counts_rebuilt": true,
+  "sealed_experiment_script_unchanged": true,
+  "all_models_selected_trained_epoch": true,
+  "runtime_prefetch_read_errors": 0,
+  "runtime_workers_clean": true
+}

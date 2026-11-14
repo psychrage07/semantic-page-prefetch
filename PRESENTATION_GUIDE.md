@@ -44,3 +44,17 @@ Use **Full research evidence** only for questions about Top-5, candidate recall,
 Open `/?view=workspace` for the database explorer, SQL editor, live page reads, next-page predictions, prefetch monitor, SQL benchmark and real Python terminal output. Build a fresh small demo, select a table, load a query template, run it and inspect the tabs. Download actual SQLite/CSV/JSON/JSONL artifacts under Files. The explicit research database option uses the matching frozen neural checkpoint and saves new outputs separately. See [WORKSPACE_GUIDE.md](WORKSPACE_GUIDE.md) for the complete walkthrough and measurement scope.
 
 The main result cards now report prediction accuracy. In the workspace, Compare models calculates Top-1/Top-5 from that run's actual page trace; its scoring/sampling scope is printed below the table. Timing and prefetch-cost details are expandable. Better prediction accuracy is the demonstrated improvement; runtime measurements have not established a query speedup.
+
+## SDSS dataset results
+
+Open `/?view=sdss` or choose **SDSS dataset results** in the sidebar. Explain: "We also trained a separate copy of our hybrid on real astronomy data from SDSS DR7, a dataset used by SeLeP. On this bounded subset and our generated SQLite workload, the hybrid reached 35.32% query-average Top-1 against Markov-2 at 27.32%. The original project database and model were kept separate."
+
+The page keeps all seven predictors visible. Query-average Top-1 gives each query equal weight; transition Top-1 and Top-5 give every next-page transition equal weight. Candidate coverage is how often the next page was proposed at all, not prediction accuracy. Scroll to see all six query types. Expand training details for validation-selected epochs and actual loss histories, or prediction samples to compare the model's proposed pages against the observed next page. Runtime checks and uncertainty are expandable. Downloads include measured CSV/JSON, all query scores, actual raw traces and real logs.
+
+This page shows saved measurements, not a running experiment. Its SQLite queries and physical page layout differ from SeLeP's original PostgreSQL experiment; do not present these scores as SeLeP's scores or combine them with the 8.62 GB study. The 50,000-record subset is non-random, and objects/pages can overlap between parameter-held-out splits. The original live demonstration and interactive terminal remain available as before.
+
+## Explaining query timing
+
+On Project Overview and Research results, the separate selective experiment compares 8.80 ms for the combined policy with 21.51 ms for the earlier neural hybrid and 9.32 ms for no prefetch in the no-delay condition. The combined policy skipped all prefetches. Its 95% interval against no prefetch includes zero, so do not call it a demonstrated prefetch speedup. The context-filtered policy took 10.26 ms and had 15 useful prefetched pages out of 213, but its interval also did not establish a gain over no prefetch. Research results includes the controlled-delay view and full comparison.
+
+The live trained-model, small-demo, SDSS and SQL workspace timing cards each use their own run's real measurements. Point out the displayed no-prefetch baseline and the run size. The small demo reports the median of trial medians; the other cards report means. A lower number from a few interactive SQL repetitions is an observation from that query, not proof of a general speedup.

@@ -7,8 +7,9 @@ import SemanticEvaluation from "./SemanticEvaluation";
 import TrainedHybridResults from "./TrainedHybridResults";
 import { useSelectedRun } from "./selectedModel";
 import InteractiveWorkspace from "./InteractiveWorkspace";
+import SdssStudy from "./SdssStudy";
 
-type View = "overview" | "traces" | "comparison" | "method" | "neural" | "lab" | "workspace" | "preview" | "protocol";
+type View = "overview" | "traces" | "comparison" | "method" | "neural" | "sdss" | "lab" | "workspace" | "preview" | "protocol";
 type WorkloadId = "point" | "join" | "traversal" | "range" | "mixed";
 type ModeId = "nvme" | "sata" | "hdd";
 type PolicyId = "stock" | "sequential" | "markov" | "modelA" | "modelB" | "oracle";
@@ -204,7 +205,7 @@ const MODES: Record<ModeId, { label: string; delay: number; factor: number; shor
   hdd: { label: "HDD-like / 8 ms", delay: 8, factor: 2.2, short: "8 ms" },
 };
 
-const chartPolicies: PolicyId[] = ["stock", "markov", "modelA", "modelB"];
+const chartPolicies: PolicyId[] = ["markov", "modelA", "modelB"];
 const objectNames = ["users_pk", "orders_created", "order_items_order", "products_pk", "account_edges", "sessions_user"];
 const planNames: Record<WorkloadId, string> = {
   point: "SEARCH users USING INTEGER PRIMARY KEY",
@@ -245,18 +246,8 @@ function formatPctValue(value: unknown, digits = 1) {
   return typeof value === "number" ? `${value.toFixed(digits)}%` : "n/a";
 }
 
-function formatDeltaMs(value: unknown) {
-  if (typeof value !== "number") return "n/a";
-  const sign = value > 0 ? "+" : "";
-  return `${sign}${value.toFixed(3)} ms`;
-}
-
 function numericValue(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
-}
-
-function latencyChange(baseline: number | null, candidate: number | null) {
-  return baseline != null && baseline > 0 && candidate != null ? ((baseline - candidate) / baseline) * 100 : null;
 }
 
 function policyLabel(policy: string) {
@@ -477,9 +468,8 @@ function MeasuredBackendPanel({ snapshot, local }: { snapshot: DashboardSnapshot
   const modelB = measuredPolicy(snapshot, "model_b");
   const modelA = measuredPolicy(snapshot, "model_a");
   const markov2 = measuredPolicy(snapshot, "markov2");
-  const noneRuntime = measuredStrategy(suite, "none");
   const modelBRuntime = measuredStrategy(suite, "model_b");
-  const bestDelta = suite?.best_mean_delta_vs_none ?? null;
+  const markovRuntime = measuredStrategy(suite, "markov2");
   const topPolicies = [modelB, modelA, markov2].filter(Boolean) as DashboardPolicyMetric[];
 
   return (
@@ -501,13 +491,13 @@ function MeasuredBackendPanel({ snapshot, local }: { snapshot: DashboardSnapshot
         </div>
         <div className="measured-card">
           <span>{suite?.name ?? "Runtime suite"}</span>
-          <strong>{formatDeltaMs(bestDelta?.mean_delta_ms)}</strong>
-          <small>{policyLabel(String(bestDelta?.strategy ?? "best"))} vs no prefetch</small>
+          <strong>{typeof markovRuntime?.median_of_run_p50_ms === "number" ? `${markovRuntime.median_of_run_p50_ms.toFixed(2)} ms` : "n/a"}</strong>
+          <small>Markov-2 median query time</small>
         </div>
         <div className="measured-card">
           <span>Model B p50</span>
           <strong>{typeof modelBRuntime?.median_of_run_p50_ms === "number" ? `${modelBRuntime.median_of_run_p50_ms.toFixed(2)} ms` : "n/a"}</strong>
-          <small>No prefetch: {typeof noneRuntime?.median_of_run_p50_ms === "number" ? `${noneRuntime.median_of_run_p50_ms.toFixed(2)} ms` : "n/a"}</small>
+          <small>Median query time for this policy</small>
         </div>
       </div>
       <div className="measured-table-wrap">
@@ -747,19 +737,15 @@ function MetricStrip({
   snapshot: DashboardSnapshot | null;
 }) {
   const measuredSelected = measuredMetricFor(snapshot, activePolicy);
-  const measuredStock = measuredMetricFor(snapshot, "stock");
   const selected = metricFor(workloadId, modeId, cacheMb, activePolicy, degree);
-  const stock = metricFor(workloadId, modeId, cacheMb, "stock", degree);
   const selectedMetrics = snapshot ? measuredSelected : selected;
   const selectedP50 = selectedMetrics?.p50 ?? null;
-  const stockP50 = snapshot ? measuredStock?.p50 ?? null : stock.p50;
-  const delta = latencyChange(stockP50, selectedP50);
   return (
     <section className="metric-strip" aria-label={snapshot ? "Measured current policy metrics" : "Illustrative current policy metrics"}>
       <div className="metric-item metric-primary">
         <span>{POLICY_INFO.find((policy) => policy.id === activePolicy)?.label} / p50</span>
         <strong>{formatMs(selectedP50)}</strong>
-        <small>{delta == null ? "Runtime comparison unavailable" : `${Math.abs(delta).toFixed(1)}% ${delta >= 0 ? "below" : "above"} no prefetch`}</small>
+        <small>Measured time for the selected prediction policy</small>
       </div>
       <div className="metric-item">
         <span>p95 latency</span>
@@ -799,16 +785,14 @@ function ResultsTable({
   snapshot: DashboardSnapshot | null;
   compact?: boolean;
 }) {
-  const displayPolicies: PolicyId[] = compact || snapshot ? ["stock", "sequential", "markov", "modelA", "modelB"] : ["stock", "sequential", "markov", "modelA", "modelB", "oracle"];
-  const measuredBaseline = measuredMetricFor(snapshot, "stock");
-  const baseline = snapshot ? measuredBaseline?.p50 ?? null : metricFor(workloadId, modeId, cacheMb, "stock", degree).p50;
+  const displayPolicies: PolicyId[] = compact || snapshot ? ["sequential", "markov", "modelA", "modelB"] : ["sequential", "markov", "modelA", "modelB", "oracle"];
   const rows = displayPolicies.map((policyId) => {
     const policy = POLICY_INFO.find((item) => item.id === policyId)!;
     return { strategy: strategyForPolicy(policyId), policyId: policyId as PolicyId | null, label: policy.label, color: policy.color };
   });
   if (snapshot) {
     for (const row of measuredSuite(snapshot)?.strategies ?? []) {
-      if (typeof row.strategy === "string" && !rows.some((item) => item.strategy === row.strategy)) {
+      if (typeof row.strategy === "string" && !["none", "stock", "null"].includes(row.strategy) && !rows.some((item) => item.strategy === row.strategy)) {
         rows.push({ strategy: row.strategy, policyId: null, label: policyLabel(row.strategy), color: "#687466" });
       }
     }
@@ -823,11 +807,10 @@ function ResultsTable({
             const policyId = row.policyId;
             const metrics = snapshot ? measuredMetricForStrategy(snapshot, row.strategy) : policyId ? metricFor(workloadId, modeId, cacheMb, policyId, degree) : null;
             const p50 = metrics?.p50 ?? null;
-            const change = latencyChange(baseline, p50);
             return (
               <tr key={row.strategy} className={`${activePolicy === policyId ? "selected-row" : ""} ${policyId === "oracle" ? "oracle-row" : ""}`} onClick={policyId ? () => onSelect(policyId) : undefined} tabIndex={policyId ? 0 : undefined} onKeyDown={policyId ? (event) => { if (event.key === "Enter" || event.key === " ") onSelect(policyId); } : undefined}>
                 <td><span className="strategy-name"><i style={{ backgroundColor: row.color }} />{row.label}</span></td>
-                <td className="number-cell">{formatMs(p50)}{policyId !== "stock" && change != null && <small className={`delta ${change >= 0 ? "delta-down" : "delta-up"}`}>{change >= 0 ? "-" : "+"}{Math.abs(change).toFixed(1)}%</small>}</td>
+                <td className="number-cell">{formatMs(p50)}</td>
                 <td className="number-cell">{formatMs(metrics?.p95)}</td>
                 <td className="number-cell">{formatPctValue(metrics?.hitRate, snapshot ? 1 : 0)}</td>
                 <td className="number-cell">{policyId === "stock" || metrics?.useful == null ? "n/a" : snapshot ? metrics.useful.toFixed(0) : `${metrics.useful}%`}</td>
@@ -1135,7 +1118,7 @@ function App() {
   const selectedRun = useSelectedRun();
   const [view, updateView] = useState<View>(() => {
     const requested = new URLSearchParams(window.location.search).get("view");
-    return ["overview", "traces", "comparison", "method", "neural", "lab", "workspace", "preview", "protocol"].includes(requested ?? "") ? requested as View : "overview";
+    return ["overview", "traces", "comparison", "method", "neural", "sdss", "lab", "workspace", "preview", "protocol"].includes(requested ?? "") ? requested as View : "overview";
   });
   function setView(next: View) {
     updateView(next);
@@ -1228,6 +1211,7 @@ function App() {
     comparison: "Detailed comparison",
     method: "How it works",
     neural: "Research results",
+    sdss: "SDSS dataset results",
     lab: "Live demonstration",
     workspace: "Interactive workspace",
     preview: "Historical dashboard & fixture preview",
@@ -1249,6 +1233,7 @@ function App() {
             ["lab", "Live demonstration", "play"],
             ["workspace", "Interactive workspace", "database"],
             ["neural", "Research results", "compare"],
+            ["sdss", "SDSS dataset results", "database"],
           ] as [View, string, string][]).map(([id, label, icon]) => (
             <button key={id} className={`nav-link ${view === id ? "nav-active" : ""}`} onClick={() => setView(id)} aria-current={view === id ? "page" : undefined}>
               <Icon name={icon} size={18} /><span>{label}</span>{view === id && <i className="nav-indicator" />}
@@ -1272,17 +1257,19 @@ function App() {
         <header className="topbar">
           <div className="breadcrumbs"><span>Pagewise</span><i>/</i><strong>{pageLabels[view]}</strong></div>
           <div className="topbar-actions">
-            {!["overview", "method", "lab", "workspace", "comparison"].includes(view) && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "protocol" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Download saved study" : view === "protocol" ? "Export fixture config" : view === "traces" ? localSnapshot ? "Export read sample" : "Export prediction sample" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
+            {view === "sdss" && <a className="export-button" href="/pagewise-sdss-study.json" download><Icon name="download" size={15} /><span>Download SDSS results</span></a>}
+            {!["overview", "method", "lab", "workspace", "comparison", "sdss"].includes(view) && <button className="export-button" onClick={view === "neural" ? exportNeuralStudy : view === "traces" ? exportTrace : view === "protocol" ? exportConfig : exportResults}><Icon name="download" size={15} /><span>{view === "neural" ? "Download saved study" : view === "protocol" ? "Export fixture config" : view === "traces" ? localSnapshot ? "Export read sample" : "Export prediction sample" : dashboardSnapshot ? "Export measured JSON" : "Export fixture results"}</span></button>}
             {view !== "lab" && <button className="header-demo-button" onClick={() => setView("lab")}>Live demo <Icon name="arrow" size={14} /></button>}
           </div>
         </header>
 
         <div className="content-area" key={view}>
           {["preview", "protocol"].includes(view) && <DemoNotice onOpenMethod={() => setView("protocol")} snapshot={dashboardSnapshot} />}
-          {view === "overview" && <ProjectOverview selectedResult={selectedRun.result} onDemo={() => setView("lab")} onResults={() => setView("neural")} onMethod={() => setView("method")} />}
+          {view === "overview" && <ProjectOverview selectedResult={selectedRun.result} onDemo={() => setView("lab")} onResults={() => setView("neural")} onMethod={() => setView("method")} onSdss={() => setView("sdss")} />}
           {view === "method" && <HowItWorks onDemo={() => setView("lab")} />}
           {view === "workspace" && <InteractiveWorkspace />}
           {view === "neural" && <NeuralStudy selectedResult={selectedRun.result} onOpenLab={() => setView("lab")} />}
+          {view === "sdss" && <SdssStudy />}
           {view === "lab" && <LocalLab onLoadSnapshot={(payload) => { setDashboardSnapshot(payload as DashboardSnapshot); setLocalSnapshot(true); setView("traces"); }} />}
           {view === "preview" && <>
             <PageIntro eyebrow="PAGEWISE / SQLITE PAGE-PREFETCH STUDY" title="Can semantics predict the next page?" description="Inspect measured backend exports, then run fresh SQLite experiments in the local workspace. Preview controls below use an illustrative fixture." trailing={<span className="intro-count">01 <small>research question</small></span>} />

@@ -7,13 +7,15 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const apiPort = process.env.PAGEWISE_API_PORT || "8765";
+const apiTarget = `http://127.0.0.1:${apiPort}`;
 
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react(), tailwindcss(), viteSingleFile()],
-  preview: { proxy: { "/api": "http://127.0.0.1:8765" } },
+  preview: { proxy: { "/api": apiTarget } },
   server: {
-    proxy: { "/api": "http://127.0.0.1:8765" },
+    proxy: { "/api": apiTarget },
     watch: { ignored: ["**/backend/runs/**", "**/backend/.venv/**"] },
   },
   resolve: {

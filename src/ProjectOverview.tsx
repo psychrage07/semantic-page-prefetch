@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import SemanticEvaluation from "./SemanticEvaluation";
+import SelectiveLatencyStudy from "./SelectiveLatencyStudy";
 import type { TrainedHybridSnapshot } from "./selectedModel";
 
 type Metric = { top1_macro_pct: number };
 type Summary = { splits: { params: Record<string, Metric> }; seeds: number[] };
 
-export default function ProjectOverview({ onDemo, onResults, onMethod, selectedResult }: { onDemo: () => void; onResults: () => void; onMethod: () => void; selectedResult?: TrainedHybridSnapshot }) {
+export default function ProjectOverview({ onDemo, onResults, onMethod, onSdss, selectedResult }: { onDemo: () => void; onResults: () => void; onMethod: () => void; onSdss: () => void; selectedResult?: TrainedHybridSnapshot }) {
   const [study, setStudy] = useState<Summary | null>(null);
   const [failed, setFailed] = useState(false);
   useEffect(() => {
@@ -33,7 +34,9 @@ export default function ProjectOverview({ onDemo, onResults, onMethod, selectedR
       {failed ? <p role="status" className="faculty-callout">The study export could not be loaded. No example scores are substituted.</p> : <><div className="faculty-metrics"><article><span>Our neural hybrid</span><strong>{fixed(score("selected"))}<small>%</small></strong><p>Query-average Top-1 accuracy</p></article><article><span>Markov-2 baseline</span><strong>{fixed(score("markov2"))}<small>%</small></strong><p>The strongest native Markov baseline tested</p></article><article><span>Improvement over Markov-2</span><strong>{improvement == null ? "—" : `+${fixed(improvement)}`}<small> pp</small></strong><p>Percentage points, on this evaluation</p></article></div>
       <div className="faculty-bars" aria-label="Measured query-average Top-1 accuracy">{models.map(([key, label, description]) => <div className={`faculty-bar-row ${key === "selected" ? "selected" : ""}`} key={key}><div><strong>{label}</strong><small>{description}</small></div><div className="faculty-bar-track"><span style={{ width: `${score(key) ?? 0}%` }} /></div><b>{fixed(score(key))}%</b></div>)}</div><p className="faculty-source">8.62 GB database · {study?.seeds.length ?? "—"} held-out workload seeds · {study ? "Measured study from 20 October 2026" : "Loading measured results…"}</p></>}
     </section>
-    <div className="faculty-findings"><article><span className="finding-label">PREDICTION RESULT</span><h3>Semantic information helped.</h3><p>Model B improved over history-only Model A. The selected hybrid improved further on familiar query types with new values.</p></article><article><span className="finding-label">EVALUATION SCOPE</span><h3>Measured on the tested workloads.</h3><p>The main comparison reports prediction accuracy. Unfamiliar query types remain difficult, and runtime measurements have not established faster queries.</p></article></div>
+    <SelectiveLatencyStudy compact onDetails={onResults} />
+    <div className="faculty-findings"><article><span className="finding-label">PREDICTION RESULT</span><h3>Semantic information helped.</h3><p>Model B improved over history-only Model A. The selected hybrid improved further on familiar query types with new values.</p></article><article><span className="finding-label">EVALUATION SCOPE</span><h3>Measured on the tested workloads.</h3><p>Prediction accuracy and query timing are measured separately for each workload.</p></article></div>
+    <section className="presentation-next"><div><p className="eyebrow">ADDITIONAL REAL-DATA EVALUATION</p><h2>Our model on astronomy data.</h2><p>See the separate SDSS DR7 experiment using a dataset from SeLeP, with every model comparison and actual measured outputs.</p></div><button className="faculty-primary" onClick={onSdss}>View SDSS dataset results</button></section>
     <section className="presentation-next"><div><p className="eyebrow">NEXT: SHOW THE SYSTEM RUNNING</p><h2>From database to measured results.</h2><p>Run the selected trained hybrid on its matching database, or build a small development experiment.</p></div><button className="faculty-primary" onClick={onDemo}>Open live demonstration →</button></section>
   </div>;
 }

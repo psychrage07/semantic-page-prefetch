@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:local": "node scripts/start-local.mjs",
+    "prebuild": "node scripts/export-selective-results.mjs",
     "preview:local": "node scripts/start-local.mjs --preview",
     "build": "vite build",
     "preview": "vite preview"
